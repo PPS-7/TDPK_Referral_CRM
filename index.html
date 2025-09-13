@@ -1,730 +1,156 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TDPK International Referral Program</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
-        .card { background-color: white; border-radius: 0.75rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .status-badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; }
-        .status-in-progress { background-color: #e0f2fe; color: #0284c7; }
-        .status-approved { background-color: #dcfce7; color: #16a34a; }
-        .status-rejected { background-color: #fee2e2; color: #dc2626; }
-        .status-on-hold { background-color: #fef9c3; color: #a16207; }
-        .status-signed-up { background-color: #dcfce7; color: #16a34a; }
-        .status-payment-pending { background-color: #e0f2fe; color: #0284c7; }
-        .status-paid { background-color: #dcfce7; color: #16a34a; }
-        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
-        .modal-content { background-color: #fefefe; margin: 5% auto; padding: 1.5rem; border-radius: 0.75rem; width: 90%; max-width: 800px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .close-button { color: #aaa; float: right; font-size: 28px; font-weight: bold; }
-        .close-button:hover, .close-button:focus { color: black; text-decoration: none; cursor: pointer; }
-        textarea { resize: vertical; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TDPK International Referral Program</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+    .card { background-color: white; border-radius: 0.75rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .status-badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; }
+    .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
+    .modal-content { background-color: #fefefe; margin: 5% auto; padding: 1.5rem; border-radius: 0.75rem; width: 90%; max-width: 800px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .close-button { color: #aaa; float: right; font-size: 28px; font-weight: bold; }
+    .close-button:hover, .close-button:focus { color: black; text-decoration: none; cursor: pointer; }
+    textarea { resize: vertical; }
+  </style>
 </head>
 <body class="bg-black text-gray-200 p-6 sm:p-10">
 
 <div class="max-w-7xl mx-auto space-y-8">
-    <!-- Header -->
-    <header class="flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0 p-6 card bg-gray-800">
-        <div class="flex items-center space-x-4">
-            <h1 class="text-xl sm:text-3xl font-bold text-white">TDPK International Referral Program</h1>
-        </div>
-        <div class="text-sm text-gray-400">
-            <span class="font-semibold">Status:</span> <span id="userIdDisplay">Connected to Database</span>
-        </div>
-    </header>
+  <!-- Header -->
+  <header class="flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0 p-6 card bg-gray-800">
+    <div class="flex items-center space-x-4">
+      <h1 class="text-xl sm:text-3xl font-bold text-white">TDPK International Referral Program</h1>
+    </div>
+    <div class="text-sm text-gray-400">
+      <span class="font-semibold">Status:</span> <span id="userIdDisplay">Connected to Google Sheet</span>
+    </div>
+  </header>
 
-    <!-- Main Dashboard -->
-    <main class="space-y-8">
-        <!-- Analytics Dashboard -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div class="p-6 card text-center bg-gray-800 text-gray-200">
-                <p class="text-sm font-medium text-gray-400">Total Leads</p>
-                <p id="totalLeadsCount" class="mt-1 text-3xl font-semibold text-white">0</p>
-            </div>
-            <div class="p-6 card text-center bg-gray-800 text-gray-200">
-                <p class="text-sm font-medium text-gray-400">Individual Referrals</p>
-                <p id="individualReferralsCount" class="mt-1 text-3xl font-semibold text-white">0</p>
-            </div>
-            <div class="p-6 card text-center bg-gray-800 text-gray-200">
-                <p class="text-sm font-medium text-gray-400">Agency Referrals</p>
-                <p id="agencyReferralsCount" class="mt-1 text-3xl font-semibold text-white">0</p>
-            </div>
-            <div class="p-6 card text-center bg-gray-800 text-gray-200">
-                <p class="text-sm font-medium text-gray-400">Approved Candidates</p>
-                <p id="approvedCandidatesCount" class="mt-1 text-3xl font-semibold text-white">0</p>
-            </div>
-        </div>
+  <!-- Main Dashboard -->
+  <main class="space-y-8">
+    <!-- Analytics Dashboard -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div class="p-6 card text-center bg-gray-800 text-gray-200">
+        <p class="text-sm font-medium text-gray-400">Total Leads</p>
+        <p id="totalLeadsCount" class="mt-1 text-3xl font-semibold text-white">0</p>
+      </div>
+      <div class="p-6 card text-center bg-gray-800 text-gray-200">
+        <p class="text-sm font-medium text-gray-400">Individual Referrals</p>
+        <p id="individualReferralsCount" class="mt-1 text-3xl font-semibold text-white">0</p>
+      </div>
+      <div class="p-6 card text-center bg-gray-800 text-gray-200">
+        <p class="text-sm font-medium text-gray-400">Agency Referrals</p>
+        <p id="agencyReferralsCount" class="mt-1 text-3xl font-semibold text-white">0</p>
+      </div>
+      <div class="p-6 card text-center bg-gray-800 text-gray-200">
+        <p class="text-sm font-medium text-gray-400">Approved Candidates</p>
+        <p id="approvedCandidatesCount" class="mt-1 text-3xl font-semibold text-white">0</p>
+      </div>
+    </div>
 
-        <!-- CRM Table & Controls -->
-        <div class="p-6 card bg-gray-800 text-gray-200">
-            <div class="flex flex-col sm:flex-row items-center justify-between mb-6 space-y-4 sm:space-y-0">
-                <h2 class="text-2xl font-semibold text-white">Referral Leads</h2>
-                <div class="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
-                    <input type="text" id="searchInput" placeholder="Search by name or email..." class="p-2 border rounded-md w-full sm:w-64 bg-gray-700 text-white placeholder-gray-400 border-gray-600">
-                    <select id="referrerTypeFilter" class="p-2 border rounded-md w-full sm:w-auto bg-gray-700 text-white border-gray-600">
-                        <option value="all">Referrer Type: All</option>
-                        <option value="Individual">Individual</option>
-                        <option value="Agency">Agency</option>
-                    </select>
-                    <select id="visaStatusFilter" class="p-2 border rounded-md w-full sm:w-auto bg-gray-700 text-white border-gray-600">
-                        <option value="all">Visa Status: All</option>
-                        <option value="In Progress">In Progress</option>
-                        <option value="Approved">Approved</option>
-                        <option value="Rejected">Rejected</option>
-                    </select>
-                    <button id="addNewLeadBtn" class="bg-blue-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-blue-700 transition duration-200 w-full sm:w-auto">Add New Lead</button>
-                </div>
-            </div>
-
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-700">
-                    <thead class="bg-gray-900">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Time</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Referrer Name</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Referral Type</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Client Name</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Visa Type</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Visa Status</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="leadsTableBody" class="bg-gray-800 divide-y divide-gray-700">
-                        <!-- Table rows will be inserted here -->
-                    </tbody>
-                </table>
-            </div>
-            <div id="noResults" class="hidden text-center text-gray-400 mt-4 py-4">No matching leads found.</div>
+    <!-- CRM Table & Controls -->
+    <div class="p-6 card bg-gray-800 text-gray-200">
+      <div class="flex flex-col sm:flex-row items-center justify-between mb-6 space-y-4 sm:space-y-0">
+        <h2 class="text-2xl font-semibold text-white">Referral Leads</h2>
+        <div class="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
+          <input type="text" id="searchInput" placeholder="Search by name or email..." class="p-2 border rounded-md w-full sm:w-64 bg-gray-700 text-white placeholder-gray-400 border-gray-600">
+          <select id="referrerTypeFilter" class="p-2 border rounded-md w-full sm:w-auto bg-gray-700 text-white border-gray-600">
+            <option value="all">Referrer Type: All</option>
+            <option value="Individual">Individual</option>
+            <option value="Agency">Agency</option>
+          </select>
+          <select id="visaStatusFilter" class="p-2 border rounded-md w-full sm:w-auto bg-gray-700 text-white border-gray-600">
+            <option value="all">Visa Status: All</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Approved">Approved</option>
+            <option value="Rejected">Rejected</option>
+          </select>
+          <button id="addNewLeadBtn" class="bg-blue-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-blue-700 transition duration-200 w-full sm:w-auto">Add New Lead</button>
         </div>
-    </main>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-700">
+          <thead class="bg-gray-900">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Time</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Referrer Name</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Referral Type</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Client Name</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Visa Type</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Visa Status</th>
+              <th class="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="leadsTableBody" class="bg-gray-800 divide-y divide-gray-700"></tbody>
+        </table>
+      </div>
+      <div id="noResults" class="hidden text-center text-gray-400 mt-4 py-4">No matching leads found.</div>
+    </div>
+  </main>
 </div>
 
 <!-- Add/Edit Lead Modal -->
 <div id="leadModal" class="modal">
-    <div class="modal-content bg-gray-800 text-gray-200">
-        <div class="flex justify-between items-center pb-3">
-            <h3 id="modalTitle" class="text-2xl font-semibold text-white">Add New Lead</h3>
-            <span class="close-button text-gray-400 hover:text-white">&times;</span>
-        </div>
-        <form id="leadForm" class="space-y-6">
-            <input type="hidden" id="leadId">
-            
-            <!-- Referrer Details -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                    <label for="referrerName" class="block text-sm font-medium text-gray-300">Referrer Name</label>
-                    <input type="text" id="referrerName" required class="mt-1 block w-full rounded-md border-gray-600 shadow-sm bg-gray-700 text-white">
-                </div>
-                <div>
-                    <label for="referrerEmail" class="block text-sm font-medium text-gray-300">Referrer Email</label>
-                    <input type="email" id="referrerEmail" required class="mt-1 block w-full rounded-md border-gray-600 shadow-sm bg-gray-700 text-white">
-                </div>
-                <div>
-                    <label for="referrerPhone" class="block text-sm font-medium text-gray-300">Referrer Phone</label>
-                    <input type="tel" id="referrerPhone" class="mt-1 block w-full rounded-md border-gray-600 shadow-sm bg-gray-700 text-white">
-                </div>
-                <div>
-                    <label for="referrerType" class="block text-sm font-medium text-gray-300">Referrer Type</label>
-                    <select id="referrerType" required class="mt-1 block w-full rounded-md border-gray-600 shadow-sm bg-gray-700 text-white">
-                        <option value="Individual">Individual</option>
-                        <option value="Agency">Agency</option>
-                    </select>
-                </div>
-            </div>
-
-            <!-- Referral Details -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                    <label for="clientName" class="block text-sm font-medium text-gray-300">Client Fullname</label>
-                    <input type="text" id="clientName" required class="mt-1 block w-full rounded-md border-gray-600 shadow-sm bg-gray-700 text-white">
-                </div>
-                <div>
-                    <label for="clientEmail" class="block text-sm font-medium text-gray-300">Client Email</label>
-                    <input type="email" id="clientEmail" required class="mt-1 block w-full rounded-md border-gray-600 shadow-sm bg-gray-700 text-white">
-                </div>
-                <div>
-                    <label for="clientPhone" class="block text-sm font-medium text-gray-300">Client Phone Number</label>
-                    <input type="tel" id="clientPhone" class="mt-1 block w-full rounded-md border-gray-600 shadow-sm bg-gray-700 text-white">
-                </div>
-                <div>
-                    <label for="clientCompany" class="block text-sm font-medium text-gray-300">Client Company/Position</label>
-                    <input type="text" id="clientCompany" class="mt-1 block w-full rounded-md border-gray-600 shadow-sm bg-gray-700 text-white">
-                </div>
-            </div>
-
-            <!-- Visa & Reward Details -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                    <label for="visaType" class="block text-sm font-medium text-gray-300">Visa Type</label>
-                    <select id="visaType" class="mt-1 block w-full rounded-md border-gray-600 shadow-sm bg-gray-700 text-white">
-                        <option value="DTV">DTV</option>
-                        <option value="LTR">LTR</option>
-                        <option value="Smart S">Smart S</option>
-                        <option value="TPC">TPC</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="visaStatus" class="block text-sm font-medium text-gray-300">Visa Status</label>
-                    <select id="visaStatus" required class="mt-1 block w-full rounded-md border-gray-600 shadow-sm bg-gray-700 text-white">
-                        <option value="In Progress">In Progress</option>
-                        <option value="Approved">Approved</option>
-                        <option value="Rejected">Rejected</option>
-                    </select>
-                </div>
-                <div id="rejectionReasonDiv" class="col-span-1 sm:col-span-2 hidden">
-                    <label for="rejectionReason" class="block text-sm font-medium text-gray-300">Reason for Rejection</label>
-                    <textarea id="rejectionReason" rows="3" class="mt-1 block w-full rounded-md border-gray-600 shadow-sm bg-gray-700 text-white"></textarea>
-                </div>
-            </div>
-            
-            <div id="individualRewardDiv" class="space-y-4">
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label for="individualReward" class="block text-sm font-medium text-gray-300">Referral Reward Selection</label>
-                        <select id="individualReward" class="mt-1 block w-full rounded-md border-gray-600 shadow-sm bg-gray-700 text-white">
-                            <option value="Coworking">1-month coworking space access</option>
-                            <option value="Meeting Room">3,000 THB of meeting room credit</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-            
-            <div id="agencyPaymentDiv" class="space-y-4 hidden">
-                <div>
-                    <label for="paymentStatus" class="block text-sm font-medium text-gray-300">Payment Status</label>
-                    <select id="paymentStatus" class="mt-1 block w-full rounded-md border-gray-600 shadow-sm bg-gray-700 text-white">
-                        <option value="Pending">Pending</option>
-                        <option value="In Progress">In Progress</option>
-                        <option value="Paid">Paid</option>
-                    </select>
-                </div>
-            </div>
-
-            <button type="submit" id="submitBtn" class="w-full bg-blue-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-blue-700 transition duration-200">Save Lead</button>
-            <button type="button" id="deleteBtn" class="w-full bg-red-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-red-700 transition duration-200 mt-2 hidden">Delete Lead</button>
-        </form>
+  <div class="modal-content bg-gray-800 text-gray-200">
+    <div class="flex justify-between items-center pb-3">
+      <h3 id="modalTitle" class="text-2xl font-semibold text-white">Add New Lead</h3>
+      <span class="close-button text-gray-400 hover:text-white">&times;</span>
     </div>
+    <form id="leadForm" class="space-y-6">
+      <input type="hidden" id="leadId">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div><label for="referrerName" class="block text-sm font-medium text-gray-300">Referrer Name</label><input type="text" id="referrerName" required class="mt-1 block w-full bg-gray-700 text-white"></div>
+        <div><label for="referrerEmail" class="block text-sm font-medium text-gray-300">Referrer Email</label><input type="email" id="referrerEmail" required class="mt-1 block w-full bg-gray-700 text-white"></div>
+        <div><label for="referrerPhone" class="block text-sm font-medium text-gray-300">Referrer Phone</label><input type="tel" id="referrerPhone" class="mt-1 block w-full bg-gray-700 text-white"></div>
+        <div><label for="referrerType" class="block text-sm font-medium text-gray-300">Referrer Type</label><select id="referrerType" class="mt-1 block w-full bg-gray-700 text-white"><option value="Individual">Individual</option><option value="Agency">Agency</option></select></div>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div><label for="clientName" class="block text-sm font-medium text-gray-300">Client Fullname</label><input type="text" id="clientName" required class="mt-1 block w-full bg-gray-700 text-white"></div>
+        <div><label for="clientEmail" class="block text-sm font-medium text-gray-300">Client Email</label><input type="email" id="clientEmail" required class="mt-1 block w-full bg-gray-700 text-white"></div>
+        <div><label for="clientPhone" class="block text-sm font-medium text-gray-300">Client Phone</label><input type="tel" id="clientPhone" class="mt-1 block w-full bg-gray-700 text-white"></div>
+        <div><label for="clientCompany" class="block text-sm font-medium text-gray-300">Client Company</label><input type="text" id="clientCompany" class="mt-1 block w-full bg-gray-700 text-white"></div>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div><label for="visaType" class="block text-sm font-medium text-gray-300">Visa Type</label><select id="visaType" class="mt-1 block w-full bg-gray-700 text-white"><option value="DTV">DTV</option><option value="LTR">LTR</option><option value="Smart S">Smart S</option><option value="TPC">TPC</option></select></div>
+        <div><label for="visaStatus" class="block text-sm font-medium text-gray-300">Visa Status</label><select id="visaStatus" class="mt-1 block w-full bg-gray-700 text-white"><option value="In Progress">In Progress</option><option value="Approved">Approved</option><option value="Rejected">Rejected</option></select></div>
+      </div>
+      <button type="submit" id="submitBtn" class="w-full bg-blue-600 text-white px-4 py-2 rounded-md">Save Lead</button>
+    </form>
+  </div>
 </div>
 
-<!-- Profile Modal -->
-<div id="profileModal" class="modal">
-    <div class="modal-content bg-gray-800 text-gray-200">
-        <div class="flex justify-between items-center pb-3">
-            <h3 class="text-2xl font-semibold text-white">Lead Profile</h3>
-            <span class="close-button text-gray-400 hover:text-white">&times;</span>
-        </div>
-        <div id="profileContent" class="space-y-6">
-            <!-- Content will be generated here -->
-        </div>
-        <div class="flex justify-end pt-4 space-x-2">
-            <button id="editProfileBtn" class="bg-blue-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-blue-700 transition duration-200">Edit</button>
-            <button id="closeProfileBtn" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md font-semibold hover:bg-gray-400 transition duration-200">Close</button>
-        </div>
-    </div>
-</div>
+<script>
+  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzb4k9Jtp1uTTm9mcyiTxG6p_ZwMsvOlw8owyjvXmGSgn20m-fbyQbjT1lQt9UVFkc/exec"; // replace with Apps Script URL
+  let leadsData = [];
 
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, onSnapshot, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, query, where, getDocs, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  async function loadLeads() {
+    const response = await fetch("https://docs.google.com/spreadsheets/d/e/2PACX-1vSve5MYbZ7TUkDNHpYyWIHoi8mF32dFuEMmm2DCZTTd0o2gsWFRBG66ju9YKczVSrF1AxygZqvWwJ6K/pub?gid=1540779843&single=true&output=csv");
+    const csv = await response.text();
+    const rows = csv.split("\n").map(r => r.split(","));
+    leadsData = rows.slice(1).map((r, i) => ({ id: i+2, Timestamp: r[0], referrerName: r[1], referrerType: r[4], clientName: r[5], visaType: r[9], visaStatus: r[10] }));
+    renderTable(leadsData);
+  }
 
-    // Global variables provided by the Canvas environment
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-    const firebaseConfig = {
-      apiKey: "AIzaSyAXwON4hXY846UWQb0-Nj-eWLLO4XqhMb0",
-      authDomain: "referral-program-crm.firebaseapp.com",
-      projectId: "referral-program-crm",
-      storageBucket: "referral-program-crm.firebasestorage.app",
-      messagingSenderId: "36290345220",
-      appId: "1:36290345220:web:34c32e05025a9f3bbe7851",
-      measurementId: "G-NC6GL5YF6K"
-    };
-
-    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-    // Modal elements
-    const leadModal = document.getElementById('leadModal');
-    const profileModal = document.getElementById('profileModal');
-    const leadForm = document.getElementById('leadForm');
-    const modalTitle = document.getElementById('modalTitle');
-    const submitBtn = document.getElementById('submitBtn');
-    const deleteBtn = document.getElementById('deleteBtn');
-    const addNewLeadBtn = document.getElementById('addNewLeadBtn');
-    const profileContent = document.getElementById('profileContent');
-    const editProfileBtn = document.getElementById('editProfileBtn');
-    const closeProfileBtn = document.getElementById('closeProfileBtn');
-    const closeButtons = document.querySelectorAll('.close-button');
-
-    // Filter elements
-    const searchInput = document.getElementById('searchInput');
-    const referrerTypeFilter = document.getElementById('referrerTypeFilter');
-    const visaStatusFilter = document.getElementById('visaStatusFilter');
-
-    // UI elements
-    const leadsTableBody = document.getElementById('leadsTableBody');
-    const totalLeadsCount = document.getElementById('totalLeadsCount');
-    const individualReferralsCount = document.getElementById('individualReferralsCount');
-    const agencyReferralsCount = document.getElementById('agencyReferralsCount');
-    const approvedCandidatesCount = document.getElementById('approvedCandidatesCount');
-    const noResults = document.getElementById('noResults');
-    const userIdDisplay = document.getElementById('userIdDisplay');
-    const rejectionReasonDiv = document.getElementById('rejectionReasonDiv');
-    const visaStatusSelect = document.getElementById('visaStatus');
-    const individualRewardDiv = document.getElementById('individualRewardDiv');
-    const agencyPaymentDiv = document.getElementById('agencyPaymentDiv');
-
-    let db;
-    let auth;
-    let leadsData = [];
-    let unsubscribeSnapshot;
-
-    const mockData = [
-        {
-            Timestamp: new Date().toISOString(),
-            referrerName: "Jane Smith",
-            referrerEmail: "jane.smith@example.com",
-            referrerPhone: "081-123-4567",
-            referrerType: "Individual",
-            individualReward: "Coworking",
-            clientName: "John Doe",
-            clientEmail: "john.doe@example.com",
-            clientPhone: "089-765-4321",
-            clientCompany: "Tech Innovators",
-            visaType: "LTR",
-            visaStatus: "Approved",
-            notes: []
-        },
-        {
-            Timestamp: new Date().toISOString(),
-            referrerName: "Global Solutions",
-            referrerEmail: "info@globalsolutions.com",
-            referrerPhone: "02-123-4567",
-            referrerType: "Agency",
-            paymentStatus: "Payment Pending",
-            clientName: "Alice Johnson",
-            clientEmail: "alice.j@example.com",
-            clientPhone: "090-111-2222",
-            clientCompany: "Fintech Co.",
-            visaType: "DTV",
-            visaStatus: "In Progress",
-            notes: []
-        },
-        {
-            Timestamp: new Date().toISOString(),
-            referrerName: "Jane Smith",
-            referrerEmail: "jane.smith@example.com",
-            referrerPhone: "081-123-4567",
-            referrerType: "Individual",
-            individualReward: "Meeting Room",
-            clientName: "Mark Wilson",
-            clientEmail: "mark.w@example.com",
-            clientPhone: "085-333-4444",
-            clientCompany: "Marketing Pros",
-            visaType: "TPC",
-            visaStatus: "Rejected",
-            rejectionReason: "Incomplete documentation.",
-            notes: []
-        }
-    ];
-
-    async function initFirebase() {
-        try {
-            if (!firebaseConfig.apiKey) {
-                console.error("Firebase config is missing. Using mock data.");
-                renderTable(mockData);
-                return;
-            }
-            const app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
-            auth = getAuth(app);
-            setLogLevel('debug');
-
-            // Authenticate the user with the provided token, or anonymously as a fallback.
-            if (initialAuthToken) {
-                await signInWithCustomToken(auth, initialAuthToken);
-            } else {
-                await signInAnonymously(auth);
-            }
-            
-            userIdDisplay.textContent = auth.currentUser.uid;
-            
-            checkAndAddMockData();
-            startRealtimeListener();
-
-        } catch (error) {
-            console.error("Firebase initialization failed:", error);
-        }
-    }
-
-    function checkAndAddMockData() {
-        getDocs(collection(db, `artifacts/${appId}/public/data/leads`)).then(snapshot => {
-            if (snapshot.empty) {
-                console.log("Adding mock data to Firestore.");
-                mockData.forEach(lead => {
-                    addDoc(collection(db, `artifacts/${appId}/public/data/leads`), lead).catch(e => console.error("Error adding mock data:", e));
-                });
-            }
-        }).catch(e => console.error("Error checking for mock data:", e));
-    }
-
-    function startRealtimeListener() {
-        const leadsCollection = collection(db, `artifacts/${appId}/public/data/leads`);
-        unsubscribeSnapshot = onSnapshot(leadsCollection, (snapshot) => {
-            leadsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            filterAndRenderLeads();
-        }, (error) => {
-            console.error("Error fetching leads from Firestore:", error);
-        });
-    }
-    
-    function filterAndRenderLeads() {
-        const searchTerm = searchInput.value.toLowerCase();
-        const referrerType = referrerTypeFilter.value;
-        const visaStatus = visaStatusFilter.value;
-
-        const filteredLeads = leadsData.filter(lead => {
-            const matchesSearch = searchTerm === '' ||
-                                 (lead.clientName && lead.clientName.toLowerCase().includes(searchTerm)) ||
-                                 (lead.clientEmail && lead.clientEmail.toLowerCase().includes(searchTerm)) ||
-                                 (lead.referrerName && lead.referrerName.toLowerCase().includes(searchTerm));
-            
-            const matchesReferrerType = referrerType === 'all' || lead.referrerType === referrerType;
-            const matchesVisaStatus = visaStatus === 'all' || lead.visaStatus === visaStatus;
-
-            return matchesSearch && matchesReferrerType && matchesVisaStatus;
-        });
-
-        renderTable(filteredLeads);
-    }
-
-    function renderTable(leads) {
-        leadsTableBody.innerHTML = '';
-        if (leads.length === 0) {
-            noResults.classList.remove('hidden');
-        } else {
-            noResults.classList.add('hidden');
-            leads.forEach(lead => {
-                const row = document.createElement('tr');
-                row.className = 'hover:bg-gray-700';
-                
-                const visaStatus = lead.visaStatus || 'N/A';
-                const statusClass = getStatusBadgeClass(visaStatus);
-                const paymentStatusClass = getStatusBadgeClass(lead.paymentStatus);
-                const referrerTypeClass = getStatusBadgeClass(lead.referrerType);
-
-                row.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">${new Date(lead.Timestamp).toLocaleString()}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-100">${lead.referrerName || 'N/A'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300"><span class="status-badge ${referrerTypeClass}">${lead.referrerType || 'N/A'}</span></td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">${lead.clientName || 'N/A'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">${lead.visaType || 'N/A'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="status-badge ${statusClass}">${visaStatus}</span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button class="text-blue-400 hover:text-blue-200 mx-1 view-btn" data-id="${lead.id}">View</button>
-                        <button class="text-indigo-400 hover:text-indigo-200 mx-1 edit-btn" data-id="${lead.id}">Edit</button>
-                    </td>
-                `;
-                leadsTableBody.appendChild(row);
-            });
-        }
-        updateAnalytics();
-    }
-    
-    function getStatusBadgeClass(status) {
-        switch (status) {
-            case 'In Progress': return 'bg-blue-300 text-blue-900';
-            case 'Approved': return 'bg-green-300 text-green-900';
-            case 'Rejected': return 'bg-red-300 text-red-900';
-            case 'Individual': return 'bg-purple-300 text-purple-900';
-            case 'Agency': return 'bg-orange-300 text-orange-900';
-            default: return 'bg-gray-400 text-gray-900';
-        }
-    }
-
-    function updateAnalytics() {
-        const total = leadsData.length;
-        const individual = leadsData.filter(lead => lead.referrerType === 'Individual').length;
-        const agency = leadsData.filter(lead => lead.referrerType === 'Agency').length;
-        const approved = leadsData.filter(lead => lead.visaStatus === 'Approved').length;
-
-        totalLeadsCount.textContent = total;
-        individualReferralsCount.textContent = individual;
-        agencyReferralsCount.textContent = agency;
-        approvedCandidatesCount.textContent = approved;
-    }
-
-    // Modal and Form Handlers
-    addNewLeadBtn.onclick = () => {
-        leadForm.reset();
-        document.getElementById('leadId').value = '';
-        modalTitle.textContent = 'Add New Lead';
-        submitBtn.textContent = 'Add Lead';
-        deleteBtn.classList.add('hidden');
-        rejectionReasonDiv.classList.add('hidden');
-        individualRewardDiv.classList.remove('hidden');
-        agencyPaymentDiv.classList.add('hidden');
-        leadModal.style.display = 'block';
-    };
-
-    closeButtons.forEach(btn => {
-        btn.onclick = () => {
-            leadModal.style.display = 'none';
-            profileModal.style.display = 'none';
-        };
+  function renderTable(leads) {
+    const tbody = document.getElementById("leadsTableBody");
+    tbody.innerHTML = "";
+    leads.forEach(l => {
+      const row = document.createElement("tr");
+      row.innerHTML = `<td class="px-6 py-4">${l.Timestamp}</td><td class="px-6 py-4">${l.referrerName}</td><td class="px-6 py-4">${l.referrerType}</td><td class="px-6 py-4">${l.clientName}</td><td class="px-6 py-4">${l.visaType}</td><td class="px-6 py-4">${l.visaStatus}</td><td class="px-6 py-4 text-right"><button class="text-indigo-400 edit-btn" data-id="${l.id}">Edit</button></td>`;
+      tbody.appendChild(row);
     });
+    document.getElementById("totalLeadsCount").textContent = leads.length;
+    document.getElementById("individualReferralsCount").textContent = leads.filter(l => l.referrerType==="Individual").length;
+    document.getElementById("agencyReferralsCount").textContent = leads.filter(l => l.referrerType==="Agency").length;
+    document.getElementById("approvedCandidatesCount").textContent = leads.filter(l => l.visaStatus==="Approved").length;
+  }
 
-    window.onclick = (event) => {
-        if (event.target == leadModal) {
-            leadModal.style.display = 'none';
-        }
-        if (event.target == profileModal) {
-            profileModal.style.display = 'none';
-        }
-    };
-    
-    leadForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const leadId = document.getElementById('leadId').value;
-        const leadData = {
-            Timestamp: new Date().toISOString(),
-            referrerName: document.getElementById('referrerName').value,
-            referrerEmail: document.getElementById('referrerEmail').value,
-            referrerPhone: document.getElementById('referrerPhone').value,
-            referrerType: document.getElementById('referrerType').value,
-            clientName: document.getElementById('clientName').value,
-            clientEmail: document.getElementById('clientEmail').value,
-            clientPhone: document.getElementById('clientPhone').value,
-            clientCompany: document.getElementById('clientCompany').value,
-            visaType: document.getElementById('visaType').value,
-            visaStatus: document.getElementById('visaStatus').value,
-            rejectionReason: document.getElementById('rejectionReason').value,
-            individualReward: document.getElementById('individualReward').value,
-            paymentStatus: document.getElementById('paymentStatus').value,
-            notes: [] // Placeholder for notes
-        };
-
-        try {
-            if (leadId) {
-                const leadRef = doc(db, `artifacts/${appId}/public/data/leads`, leadId);
-                const existingData = (await getDoc(leadRef)).data();
-                const updatedFields = {};
-                const historyEntry = { timestamp: new Date().toISOString(), changes: [] };
-
-                for (const key in leadData) {
-                    if (existingData[key] !== leadData[key]) {
-                        updatedFields[key] = leadData[key];
-                        historyEntry.changes.push({
-                            field: key,
-                            oldValue: existingData[key],
-                            newValue: leadData[key]
-                        });
-                    }
-                }
-
-                if (historyEntry.changes.length > 0) {
-                    const newHistory = existingData.history ? [...existingData.history, historyEntry] : [historyEntry];
-                    await updateDoc(leadRef, { ...updatedFields, history: newHistory });
-                }
-            } else {
-                await addDoc(collection(db, `artifacts/${appId}/public/data/leads`), leadData);
-            }
-            leadModal.style.display = 'none';
-        } catch (e) {
-            console.error("Error adding/updating document: ", e);
-        }
-    });
-
-    // Edit/View Lead Logic
-    leadsTableBody.addEventListener('click', async (e) => {
-        const id = e.target.dataset.id;
-        if (!id) return;
-        
-        const leadRef = doc(db, `artifacts/${appId}/public/data/leads`, id);
-        const leadDoc = await getDoc(leadRef);
-        const lead = { id: leadDoc.id, ...leadDoc.data() };
-
-        if (e.target.classList.contains('edit-btn')) {
-            modalTitle.textContent = 'Edit Lead';
-            submitBtn.textContent = 'Update Lead';
-            deleteBtn.classList.remove('hidden');
-            deleteBtn.dataset.id = id;
-            
-            document.getElementById('leadId').value = lead.id;
-            document.getElementById('referrerName').value = lead.referrerName || '';
-            document.getElementById('referrerEmail').value = lead.referrerEmail || '';
-            document.getElementById('referrerPhone').value = lead.referrerPhone || '';
-            document.getElementById('referrerType').value = lead.referrerType || 'Individual';
-            document.getElementById('individualReward').value = lead.individualReward || 'Coworking';
-            document.getElementById('paymentStatus').value = lead.paymentStatus || 'Payment Pending';
-            document.getElementById('clientName').value = lead.clientName || '';
-            document.getElementById('clientEmail').value = lead.clientEmail || '';
-            document.getElementById('clientPhone').value = lead.clientPhone || '';
-            document.getElementById('clientCompany').value = lead.clientCompany || '';
-            document.getElementById('visaType').value = lead.visaType || 'DTV';
-            document.getElementById('visaStatus').value = lead.visaStatus || 'In Progress';
-            document.getElementById('rejectionReason').value = lead.rejectionReason || '';
-
-            rejectionReasonDiv.classList.toggle('hidden', lead.visaStatus !== 'Rejected');
-            individualRewardDiv.classList.toggle('hidden', lead.referrerType !== 'Individual');
-            agencyPaymentDiv.classList.toggle('hidden', lead.referrerType !== 'Agency');
-            
-            leadModal.style.display = 'block';
-
-        } else if (e.target.classList.contains('view-btn')) {
-            profileModal.setAttribute('data-id', lead.id);
-
-            let notesHtml = '';
-            if (lead.notes && lead.notes.length > 0) {
-                notesHtml = `
-                    <div class="space-y-2">
-                        <h4 class="text-lg font-semibold text-gray-200">Notes</h4>
-                        ${lead.notes.map(note => `<div class="p-3 bg-gray-700 rounded-md">
-                            <p class="text-sm text-gray-200">${note.text}</p>
-                            <p class="text-xs text-gray-400 mt-1">${new Date(note.timestamp).toLocaleString()}</p>
-                        </div>`).join('')}
-                    </div>
-                `;
-            } else {
-                notesHtml = `<p class="text-gray-400">No notes have been added yet.</p>`;
-            }
-
-            let historyHtml = '';
-            if (lead.history && lead.history.length > 0) {
-                historyHtml = `
-                    <div class="space-y-2">
-                        <h4 class="text-lg font-semibold text-gray-200">History</h4>
-                        ${lead.history.map(entry => `
-                            <div class="p-3 bg-gray-700 rounded-md">
-                                <p class="text-xs text-gray-400">${new Date(entry.timestamp).toLocaleString()}</p>
-                                <ul class="list-disc list-inside mt-1 space-y-1">
-                                    ${entry.changes.map(change => `
-                                        <li class="text-sm text-gray-200">
-                                            <strong>${change.field}:</strong> from "${change.oldValue}" to "${change.newValue}"
-                                        </li>
-                                    `).join('')}
-                                </ul>
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
-            } else {
-                historyHtml = `<p class="text-gray-400">No history available.</p>`;
-            }
-
-            const getStatusBadgeHtml = (status, label) => `<span class="status-badge ${getStatusBadgeClass(status)}">${label}: ${status}</span>`;
-
-            profileContent.innerHTML = `
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <p class="font-semibold text-gray-300">Referrer Name:</p>
-                        <p class="text-gray-100">${lead.referrerName || 'N/A'}</p>
-                    </div>
-                    <div>
-                        <p class="font-semibold text-gray-300">Referrer Email:</p>
-                        <p class="text-gray-100">${lead.referrerEmail || 'N/A'}</p>
-                    </div>
-                    <div>
-                        <p class="font-semibold text-gray-300">Client Name:</p>
-                        <p class="text-gray-100">${lead.clientName || 'N/A'}</p>
-                    </div>
-                    <div>
-                        <p class="font-semibold text-gray-300">Client Email:</p>
-                        <p class="text-gray-100">${lead.clientEmail || 'N/A'}</p>
-                    </div>
-                    <div>
-                        <p class="font-semibold text-gray-300">Client Phone:</p>
-                        <p class="text-gray-100">${lead.clientPhone || 'N/A'}</p>
-                    </div>
-                    <div>
-                        <p class="font-semibold text-gray-300">Client Company:</p>
-                        <p class="text-gray-100">${lead.clientCompany || 'N/A'}</p>
-                    </div>
-                    <div class="col-span-1 sm:col-span-2 space-y-2">
-                        <p class="font-semibold text-gray-300">Status:</p>
-                        <div class="space-x-2">
-                            ${getStatusBadgeHtml(lead.referrerType, 'Referrer Type')}
-                            ${getStatusBadgeHtml(lead.visaType, 'Visa Type')}
-                            ${getStatusBadgeHtml(lead.visaStatus, 'Visa Status')}
-                            ${lead.paymentStatus ? getStatusBadgeHtml(lead.paymentStatus, 'Payment Status') : ''}
-                        </div>
-                    </div>
-                    ${lead.rejectionReason ? `
-                    <div class="col-span-1 sm:col-span-2">
-                        <p class="font-semibold text-gray-300">Rejection Reason:</p>
-                        <p class="text-gray-100">${lead.rejectionReason}</p>
-                    </div>
-                    ` : ''}
-                    ${lead.individualReward ? `
-                    <div class="col-span-1 sm:col-span-2">
-                        <p class="font-semibold text-gray-300">Referral Reward:</p>
-                        <p class="text-gray-100">${lead.individualReward}</p>
-                    </div>
-                    ` : ''}
-                </div>
-                <div class="space-y-4">
-                    ${notesHtml}
-                    <div>
-                        <h4 class="text-lg font-semibold text-gray-200">Add a New Note</h4>
-                        <textarea id="newNoteTextarea" rows="2" class="mt-1 block w-full rounded-md border-gray-600 shadow-sm bg-gray-700 text-white"></textarea>
-                        <button id="addNoteBtn" class="mt-2 bg-green-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-green-700 transition duration-200">Add Note</button>
-                    </div>
-                </div>
-                ${historyHtml}
-            `;
-
-            document.getElementById('addNoteBtn').onclick = async () => {
-                const noteText = document.getElementById('newNoteTextarea').value.trim();
-                if (noteText) {
-                    const newNote = { text: noteText, timestamp: new Date().toISOString() };
-                    const updatedNotes = lead.notes ? [...lead.notes, newNote] : [newNote];
-                    await updateDoc(leadRef, { notes: updatedNotes });
-                    document.getElementById('newNoteTextarea').value = '';
-                }
-            };
-
-            profileModal.style.display = 'block';
-        }
-    });
-
-    // Delete lead logic
-    deleteBtn.onclick = async () => {
-        const id = deleteBtn.dataset.id;
-        if (id && confirm('Are you sure you want to delete this lead?')) {
-            try {
-                await deleteDoc(doc(db, `artifacts/${appId}/public/data/leads`, id));
-                leadModal.style.display = 'none';
-            } catch (e) {
-                console.error("Error deleting document: ", e);
-            }
-        }
-    };
-    
-    // Toggle visibility of conditional form fields
-    document.getElementById('referrerType').addEventListener('change', (e) => {
-        const type = e.target.value;
-        individualRewardDiv.classList.toggle('hidden', type !== 'Individual');
-        agencyPaymentDiv.classList.toggle('hidden', type !== 'Agency');
-    });
-
-    visaStatusSelect.addEventListener('change', (e) => {
-        const status = e.target.value;
-        rejectionReasonDiv.classList.toggle('hidden', status !== 'Rejected');
-    });
-
-    // Filter event listeners
-    searchInput.addEventListener('input', filterAndRenderLeads);
-    referrerTypeFilter.addEventListener('change', filterAndRenderLeads);
-    visaStatusFilter.addEventListener('change', filterAndRenderLeads);
-    
-    // Initial load
-    window.onload = initFirebase;
+  window.onload = loadLeads;
 </script>
-
 </body>
 </html>

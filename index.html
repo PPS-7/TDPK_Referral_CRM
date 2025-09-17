@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TDPK International Referral Program</title>
+  <title>TDPK International Referral Program — Referral CRM</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <style>
@@ -28,6 +28,8 @@
     .badge.yellow { background: #78350f; color: #fde68a; border: 1px solid #92400e; }
     .badge.red { background: #7f1d1d; color: #fecaca; border: 1px solid #991b1b; }
     .table-wrap { overflow: auto; border: 1px solid #1f2937; border-radius: .75rem; }
+    .toggle .active { background: #2563eb; color: #fff; border-color: #2563eb; }
+    .toggle .inactive { background: #0f172a; border: 1px solid #334155; color: #e2e8f0; }
   </style>
 </head>
 <body class="text-gray-200 p-6 sm:p-10">
@@ -36,7 +38,7 @@
     <!-- Header -->
     <header class="flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0 p-6 card">
       <div class="flex items-center space-x-4">
-        <h1 class="text-xl sm:text-3xl font-bold text-white">TDPK International Referral Program</h1>
+        <h1 class="text-xl sm:text-3xl font-bold text-white">TDPK International Referral Program — Referral CRM</h1>
       </div>
       <div class="text-sm text-gray-400">
         <span class="font-semibold">Status:</span> <span id="userIdDisplay">Connected to Google Sheets</span>
@@ -63,114 +65,48 @@
       </div>
     </section>
 
-    <!-- CRM Table -->
-    <section class="p-6 card">
-      <div class="flex flex-col sm:flex-row items-center justify-between mb-6 space-y-4 sm:space-y-0">
-        <h2 class="text-2xl font-semibold text-white">Referral Leads</h2>
-        <div class="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
+    <!-- Mode Toggle + Filters -->
+    <section class="p-6 card space-y-4">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div class="toggle flex gap-2">
+          <button id="btnIndividual" class="btn inactive">Individual Leads</button>
+          <button id="btnAgency" class="btn inactive">Agency Leads</button>
+        </div>
+        <div class="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
           <input type="text" id="searchInput" placeholder="Search by name, email, phone..." class="input w-full sm:w-64" />
-          <select id="referrerTypeFilter" class="input w-full sm:w-auto">
-            <option value="all">Referrer Type: All</option>
-            <option value="Individual">Individual</option>
-            <option value="Agency">Agency</option>
-          </select>
           <select id="visaStatusFilter" class="input w-full sm:w-auto">
             <option value="all">Visa Status: All</option>
             <option value="In Progress">In Progress</option>
             <option value="Approved">Approved</option>
             <option value="Rejected">Rejected</option>
           </select>
-          <div class="flex gap-2 w-full sm:w-auto">
-            <button id="refreshAll" class="btn btn-ghost w-full sm:w-auto">Refresh</button>
-            <button id="addNewLeadBtn" class="btn btn-primary w-full sm:w-auto">Add New Lead</button>
-          </div>
+          <button id="refreshAll" class="btn btn-ghost w-full sm:w-auto">Refresh</button>
         </div>
       </div>
 
+      <!-- Tables -->
       <div class="table-wrap">
         <table class="min-w-full">
-          <thead class="bg-gray-900 sticky top-0">
-            <tr>
-              <th>Time</th>
-              <th>Referrer Name</th>
-              <th>Referral Type</th>
-              <th>Client Name</th>
-              <th>Visa Type</th>
-              <th>Visa Status</th>
-              <th class="text-right pr-4">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="leadsTableBody" class="divide-y divide-gray-800"></tbody>
+          <thead class="bg-gray-900 sticky top-0" id="tableHead"></thead>
+          <tbody id="tableBody" class="divide-y divide-gray-800"></tbody>
         </table>
       </div>
       <div id="noResults" class="hidden text-center text-gray-400 mt-4 py-4">No matching leads found.</div>
     </section>
   </div>
 
-  <!-- Add/Edit Lead Modal -->
+  <!-- Edit Lead Modal (no add) -->
   <div id="leadModal" class="modal">
     <div class="modal-content">
       <div class="flex justify-between items-center pb-2">
-        <h3 id="modalTitle" class="text-2xl font-semibold text-white">Add New Lead</h3>
+        <h3 id="modalTitle" class="text-2xl font-semibold text-white">Edit Lead</h3>
         <span class="close-button" onclick="closeModal('leadModal')">&times;</span>
       </div>
       <form id="leadForm" class="space-y-6">
         <input type="hidden" id="rowNumber" />
 
-        <!-- Referrer Details -->
+        <!-- Always editable: Visa & core -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm text-gray-300">Referrer Name</label>
-            <input id="ReferrerName" class="input w-full" required />
-          </div>
-          <div>
-            <label class="block text-sm text-gray-300">Referrer Email</label>
-            <input id="ReferrerEmail" type="email" class="input w-full" />
-          </div>
-          <div>
-            <label class="block text-sm text-gray-300">Referrer Phone</label>
-            <input id="ReferrerPhone" class="input w-full" />
-          </div>
-          <div>
-            <label class="block text-sm text-gray-300">Referrer Type</label>
-            <select id="ReferrerType" class="input w-full">
-              <option>Individual</option>
-              <option>Agency</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Client Details -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm text-gray-300">Client Fullname</label>
-            <input id="ClientName" class="input w-full" required />
-          </div>
-          <div>
-            <label class="block text-sm text-gray-300">Client Email</label>
-            <input id="ClientEmail" type="email" class="input w-full" />
-          </div>
-          <div>
-            <label class="block text-sm text-gray-300">Client Phone Number</label>
-            <input id="ClientPhone" class="input w-full" />
-          </div>
-          <div>
-            <label class="block text-sm text-gray-300">Client Company/Position</label>
-            <input id="ClientCompany" class="input w-full" />
-          </div>
-        </div>
-
-        <!-- Visa & Status -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm text-gray-300">Visa Type</label>
-            <select id="VisaType" class="input w-full">
-              <option>DTV</option>
-              <option>LTR</option>
-              <option>Smart S</option>
-              <option>TPC</option>
-            </select>
-          </div>
           <div>
             <label class="block text-sm text-gray-300">Visa Status</label>
             <select id="VisaStatus" class="input w-full">
@@ -179,40 +115,52 @@
               <option>Rejected</option>
             </select>
           </div>
+          <div id="IndividualRewardDiv" class="hidden">
+            <label class="block text-sm text-gray-300">Reward Selection (Individual)</label>
+            <select id="IndividualReward" class="input w-full">
+              <option value="Coworking">1-month coworking space access</option>
+              <option value="Meeting Room">3,000 THB of meeting room credit</option>
+            </select>
+          </div>
+          <div id="IndividualRewardStatusDiv" class="hidden">
+            <label class="block text-sm text-gray-300">Reward Status</label>
+            <select id="RewardStatus" class="input w-full">
+              <option>Pending</option>
+              <option>Granted</option>
+            </select>
+          </div>
+          <div id="AgencyPaymentDiv" class="hidden">
+            <label class="block text-sm text-gray-300">Payment Status (Agency)</label>
+            <select id="PaymentStatus" class="input w-full">
+              <option>Pending</option>
+              <option>In Progress</option>
+              <option>Initial Pay</option>
+              <option>Fully Paid</option>
+            </select>
+          </div>
         </div>
+
         <div id="RejectionReasonDiv" class="hidden">
           <label class="block text-sm text-gray-300">Reason for Rejection</label>
           <textarea id="RejectionReason" rows="3" class="input w-full"></textarea>
         </div>
 
-        <!-- Conditional Reward / Payment -->
-        <div id="IndividualRewardDiv">
-          <label class="block text-sm text-gray-300">Referral Reward Selection</label>
-          <select id="IndividualReward" class="input w-full">
-            <option value="Coworking">1-month coworking space access</option>
-            <option value="Meeting Room">3,000 THB of meeting room credit</option>
-          </select>
-        </div>
-        <div id="AgencyPaymentDiv" class="hidden">
-          <label class="block text-sm text-gray-300">Payment Status</label>
-          <select id="PaymentStatus" class="input w-full">
-            <option>Pending</option>
-            <option>In Progress</option>
-            <option>Initial Pay</option>
-            <option>Fully Paid</option>
-          </select>
+        <div>
+          <label class="block text-sm text-gray-300">Notes (staff only)</label>
+          <textarea id="Notes" rows="3" class="input w-full" placeholder="Optional note (will be appended)"></textarea>
+          <p class="text-xs text-gray-400 mt-1">Adding a note here will append to Notes history.</p>
         </div>
 
         <div class="flex items-center justify-end gap-2">
           <button type="button" class="btn btn-ghost" onclick="closeModal('leadModal')">Cancel</button>
-          <button id="saveBtn" class="btn btn-primary" type="submit">Save</button>
+          <button id="saveBtn" class="btn btn-primary" type="submit">Save Changes</button>
         </div>
         <p id="formError" class="text-sm text-red-300"></p>
       </form>
     </div>
   </div>
 
-  <!-- Profile (View) Modal with Notes -->
+  <!-- Profile (View) Modal -->
   <div id="profileModal" class="modal">
     <div class="modal-content">
       <div class="flex justify-between items-center pb-2">
@@ -231,196 +179,289 @@
  * CONFIG
  ***********************/
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzpWvbh8pbBdvgNzHE24pGDz3ierkeMjqW4S0U1btKSTJ9Spz_nwdSHNDo-Urm6FwSV/exec";
-let leads=[];
+const MASTER_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSve5MYbZ7TUkDNHpYyWIHoi8mF32dFuEMmm2DCZTTd0o2gsWFRBG66ju9YKczVSrF1AxygZqvWwJ6K/pub?gid=1540779843&single=true&output=csv";
+
+let leads = [];           // full dataset
+let currentMode = "Individual"; // "Individual" | "Agency"
 
 /***********************
  * UTILS
  ***********************/
-const qs=s=>document.querySelector(s);
-const qsa=s=>Array.from(document.querySelectorAll(s));
-const fmtTime=t=>t?new Date(t).toLocaleString():"";
-const badgeForStatus=s=>{
-  if(s==="Approved") return "<span class='badge green'>Approved</span>";
-  if(s==="Rejected") return "<span class='badge red'>Rejected</span>";
+const qs = s => document.querySelector(s);
+const qsa = s => Array.from(document.querySelectorAll(s));
+const fmtTime = t => t ? new Date(t).toLocaleString() : "";
+const badgeForStatus = s => {
+  if (s === "Approved") return "<span class='badge green'>Approved</span>";
+  if (s === "Rejected") return "<span class='badge red'>Rejected</span>";
   return "<span class='badge yellow'>In Progress</span>";
 };
 function openModal(id){qs("#"+id).style.display="block";}
 function closeModal(id){qs("#"+id).style.display="none";}
-function parseNotesCell(c){if(!c)return[];try{const v=JSON.parse(c);return Array.isArray(v)?v:[]}catch{return[];}}
+function parseNotesCell(c){ if(!c) return []; try{ const v = JSON.parse(c); return Array.isArray(v)?v:[]; }catch{ return []; } }
+function setActiveModeButton(){
+  const i=qs("#btnIndividual"), a=qs("#btnAgency");
+  if(currentMode==="Individual"){
+    i.classList.add("active"); i.classList.remove("inactive");
+    a.classList.remove("active"); a.classList.add("inactive");
+  }else{
+    a.classList.add("active"); a.classList.remove("inactive");
+    i.classList.remove("active"); i.classList.add("inactive");
+  }
+}
 
 /***********************
  * LOADERS
  ***********************/
 async function reloadLeads(){
-  const res=await fetch(SCRIPT_URL+"?action=load");
-  const out=await res.json();
-  leads=out||[];
-  renderLeads(); renderCounters();
+  const res = await fetch(SCRIPT_URL+"?action=load");
+  const out = await res.json();
+  leads = (Array.isArray(out) ? out : []);
+  renderCounters();
+  renderTable();
 }
 
 /***********************
- * RENDER
+ * COUNTERS
  ***********************/
 function renderCounters(){
-  qs("#totalLeadsCount").innerText=leads.length;
-  qs("#individualReferralsCount").innerText=leads.filter(l=>l["Referrer Type"]==="Individual").length;
-  qs("#agencyReferralsCount").innerText=leads.filter(l=>l["Referrer Type"]==="Agency").length;
-  qs("#approvedCandidatesCount").innerText=leads.filter(l=>l["Visa Status"]==="Approved").length;
+  qs("#totalLeadsCount").innerText = leads.length;
+  qs("#individualReferralsCount").innerText = leads.filter(l => String(l["Referrer Type"])==="Individual").length;
+  qs("#agencyReferralsCount").innerText = leads.filter(l => String(l["Referrer Type"])==="Agency").length;
+  qs("#approvedCandidatesCount").innerText = leads.filter(l => String(l["Visa Status"])==="Approved").length;
 }
 
-function renderLeads(){
-  const tbody=qs("#leadsTableBody"); tbody.innerHTML="";
-  const search=qs("#searchInput").value.trim().toLowerCase();
-  const typeF=qs("#referrerTypeFilter").value;
-  const visaF=qs("#visaStatusFilter").value;
-  const filtered=leads.filter(l=>{
-    const matchesSearch=!search||[
+/***********************
+ * TABLE
+ ***********************/
+function renderTableHead(){
+  // Column heads vary by mode
+  const head = (currentMode==="Individual")
+    ? ["Time","Referrer","Email","Client","Visa Type","Visa Status","Reward Status","Actions"]
+    : ["Time","Referrer","Email","Client","Visa Type","Visa Status","Payment Status","Actions"];
+  qs("#tableHead").innerHTML = `<tr>${head.map(h=>`<th>${h}</th>`).join("")}</tr>`;
+}
+
+function renderTable(){
+  renderTableHead();
+  const tbody = qs("#tableBody");
+  tbody.innerHTML = "";
+
+  const visaF = qs("#visaStatusFilter").value;
+  const search = qs("#searchInput").value.trim().toLowerCase();
+
+  const filtered = leads.filter(l => {
+    const isType = String(l["Referrer Type"]||"") === currentMode;
+    if(!isType) return false;
+    const matchesVisa = (visaF==="all") || (String(l["Visa Status"]||"")===visaF);
+    const hay = [
       l["Referrer Name"], l["Referrer Email"], l["Referrer Phone"],
       l["Client Name"], l["Client Email"], l["Client Phone"], l["Client Company/Position"]
-    ].some(v=>String(v||"").toLowerCase().includes(search));
-    const matchesType=(typeF==="all")||(String(l["Referrer Type"]||"")===typeF);
-    const matchesVisa=(visaF==="all")||(String(l["Visa Status"]||"")===visaF);
-    return matchesSearch&&matchesType&&matchesVisa;
+    ].map(v=>String(v||"").toLowerCase());
+    const matchesSearch = !search || hay.some(v=>v.includes(search));
+    return matchesVisa && matchesSearch;
   });
+
   if(filtered.length===0) qs("#noResults").classList.remove("hidden"); else qs("#noResults").classList.add("hidden");
 
-  filtered.forEach(l=>{
-    const tr=document.createElement("tr");
-    tr.className="hover:bg-slate-800/40";
-    tr.innerHTML=`
-      <td>${l["Timestamp"]?fmtTime(l["Timestamp"]):""}</td>
-      <td>${l["Referrer Name"]||""}</td>
-      <td>${l["Referrer Type"]||""}</td>
-      <td>${l["Client Name"]||""}</td>
-      <td>${l["Visa Type"]||""}</td>
-      <td>${badgeForStatus(l["Visa Status"]||"In Progress")}</td>
+  filtered.forEach(l => {
+    const cells = (currentMode==="Individual")
+      ? [
+          (l["Timestamp"]?fmtTime(l["Timestamp"]):""),
+          (l["Referrer Name"]||""),
+          (l["Referrer Email"]||""),
+          (l["Client Name"]||""),
+          (l["Visa Type"]||""),
+          (badgeForStatus(l["Visa Status"]||"In Progress")),
+          (l["Reward Status"]||"Pending"),
+        ]
+      : [
+          (l["Timestamp"]?fmtTime(l["Timestamp"]):""),
+          (l["Referrer Name"]||""),
+          (l["Referrer Email"]||""),
+          (l["Client Name"]||""),
+          (l["Visa Type"]||""),
+          (badgeForStatus(l["Visa Status"]||"In Progress")),
+          (l["Payment Status"]||"Pending"),
+        ];
+
+    const tr = document.createElement("tr");
+    tr.className = "hover:bg-slate-800/40";
+    tr.innerHTML = `
+      ${cells.map(c=>`<td>${c}</td>`).join("")}
       <td class="text-right pr-2">
         <button class="btn btn-ghost mr-2" onclick='viewLead(${JSON.stringify(l.rowNumber)})'>View</button>
-        <button class="btn btn-ghost mr-2" onclick='editLead(${JSON.stringify(l.rowNumber)})'>Edit</button>
-        <button class="btn btn-ghost" onclick='deleteLead(${JSON.stringify(l.rowNumber)})'>Del</button>
+        <button class="btn btn-ghost" onclick='editLead(${JSON.stringify(l.rowNumber)})'>Edit</button>
       </td>`;
     tbody.appendChild(tr);
   });
 }
 
 /***********************
- * CRUD
- ***********************/
-async function addOrUpdateLead(payload){
-  const isEdit=!!payload.rowNumber;
-  const url=`${SCRIPT_URL}?action=${isEdit?"update":"add"}`;
-  const res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
-  const out=await res.json(); if(!out.ok) throw new Error(out.error||"Unknown error");
-}
-async function deleteLead(rowNumber){
-  if(!confirm("Delete this lead?"))return;
-  const res=await fetch(`${SCRIPT_URL}?action=delete`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({rowNumber})});
-  const out=await res.json(); if(!out.ok) return alert(out.error); await reloadLeads();
-}
-
-/***********************
- * VIEW & EDIT
+ * EDIT / VIEW
  ***********************/
 function viewLead(rowNumber){
-  const l=leads.find(x=>x.rowNumber===rowNumber); if(!l)return;
-  const notesArr=parseNotesCell(l["Notes"]);
-  const notesHtml=notesArr.map(n=>`<div class="p-2 bg-slate-800 mb-1 rounded"><p>${n.note}</p><p class="text-xs text-gray-400">${new Date(n.at).toLocaleString()}</p></div>`).join("")||"<p>No notes yet</p>";
-  const kv=(label,val)=>`<div><p class="text-xs text-gray-400">${label}</p><p class="text-white">${val||"—"}</p></div>`;
+  const l = leads.find(x => Number(x.rowNumber)===Number(rowNumber));
+  if(!l) return;
 
-  qs("#profileContent").innerHTML=`
+  const notesArr = parseNotesCell(l["Notes"]);
+  const notesHtml = notesArr.length
+    ? notesArr.map(n=>`
+      <div class="p-3 bg-slate-800 rounded-md border border-slate-700">
+        <p class="text-sm">${n.note}</p>
+        <p class="text-xs text-gray-400 mt-1">${new Date(n.at).toLocaleString()}</p>
+      </div>`).join("")
+    : "<p class='text-gray-400'>No notes yet.</p>";
+
+  const kv = (k,v) => `<div><p class="text-xs text-gray-400">${k}</p><p class="text-sm">${v||"—"}</p></div>`;
+
+  const modeSpecific =
+    (String(l["Referrer Type"])==="Individual")
+      ? `${kv("Reward Selection", l["Individual Reward"])}${kv("Reward Status", l["Reward Status"])}`
+      : `${kv("Payment Status", l["Payment Status"])}`;
+
+  qs("#profileContent").innerHTML = `
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      ${kv("Referrer Name",l["Referrer Name"])}
-      ${kv("Referrer Email",l["Referrer Email"])}
-      ${kv("Referrer Phone",l["Referrer Phone"])}
-      ${kv("Referrer Type",l["Referrer Type"])}
-      ${kv("Client Name",l["Client Name"])}
-      ${kv("Client Email",l["Client Email"])}
-      ${kv("Client Phone",l["Client Phone"])}
-      ${kv("Client Company/Position",l["Client Company/Position"])}
-      ${kv("Visa Type",l["Visa Type"])}
-      ${kv("Visa Status",l["Visa Status"])}
-      ${l["Referrer Type"]==="Individual"?kv("Individual Reward",l["Individual Reward"]):""}
-      ${l["Referrer Type"]==="Agency"?kv("Payment Status",l["Payment Status"]):""}
-      ${l["Visa Status"]==="Rejected"?kv("Rejection Reason",l["Rejection Reason"]):""}
+      ${kv("Referrer Name", l["Referrer Name"])}
+      ${kv("Referrer Email", l["Referrer Email"])}
+      ${kv("Referrer Phone", l["Referrer Phone"])}
+      ${kv("Referrer Type", l["Referrer Type"])}
+      ${kv("Client Name", l["Client Name"])}
+      ${kv("Client Email", l["Client Email"])}
+      ${kv("Client Phone", l["Client Phone"])}
+      ${kv("Client Company/Position", l["Client Company/Position"])}
+      ${kv("Visa Type", l["Visa Type"])}
+      ${kv("Visa Status", l["Visa Status"])}
+      ${modeSpecific}
+      ${l["Visa Status"]==="Rejected" ? kv("Rejection Reason", l["Rejection Reason"]) : ""}
       ${kv("Last Updated", l["Last Updated"] ? new Date(l["Last Updated"]).toLocaleString() : "—")}
     </div>
     <div class="space-y-3 mt-4">
-      <h4 class="text-lg font-semibold text-white">Notes</h4>${notesHtml}
-      <textarea id="newNote" class="input w-full mt-2" placeholder="Add note..."></textarea>
-      <button class="btn btn-primary mt-2" onclick="appendNote(${rowNumber})">Add Note</button>
+      <h4 class="text-lg font-semibold text-white">Notes</h4>
+      ${notesHtml}
+      <div class="flex gap-2">
+        <textarea id="newNote" rows="2" class="input w-full" placeholder="Add a note (staff-only)"></textarea>
+        <button class="btn btn-primary" onclick='(function(){ const t=document.getElementById("newNote").value.trim(); if(!t) return; appendNote(${JSON.stringify(rowNumber)}, t); })()'>Add Note</button>
+      </div>
+    </div>
+    <div class="flex justify-end gap-2 pt-4">
+      <button class="btn btn-ghost" onclick='editLead(${JSON.stringify(rowNumber)})'>Edit</button>
     </div>`;
   openModal("profileModal");
 }
 
 function editLead(rowNumber){
-  const l=leads.find(x=>x.rowNumber===rowNumber); if(!l)return;
-  qs("#modalTitle").innerText="Edit Lead";
-  qs("#rowNumber").value=rowNumber;
-  qs("#ReferrerName").value=l["Referrer Name"]||"";
-  qs("#ReferrerEmail").value=l["Referrer Email"]||"";
-  qs("#ReferrerPhone").value=l["Referrer Phone"]||"";
-  qs("#ReferrerType"].value=l["Referrer Type"]||"Individual";
-  qs("#ClientName").value=l["Client Name"]||"";
-  qs("#ClientEmail").value=l["Client Email"]||"";
-  qs("#ClientPhone").value=l["Client Phone"]||"";
-  qs("#ClientCompany").value=l["Client Company/Position"]||"";
-  qs("#VisaType"].value=l["Visa Type"]||"DTV";
-  qs("#VisaStatus"].value=l["Visa Status"]||"In Progress";
-  qs("#RejectionReason").value=l["Rejection Reason"]||"";
-  qs("#IndividualRewardDiv").style.display=(l["Referrer Type"]==="Individual")?"block":"none";
-  qs("#AgencyPaymentDiv").style.display=(l["Referrer Type"]==="Agency")?"block":"none";
-  qs("#IndividualReward").value=l["Individual Reward"]||"Coworking";
-  qs("#PaymentStatus").value=l["Payment Status"]||"Pending";
+  const l = leads.find(x => Number(x.rowNumber)===Number(rowNumber));
+  if(!l) return;
+  qs("#modalTitle").innerText = "Edit Lead";
+  qs("#rowNumber").value = rowNumber;
+
+  // Set editable fields
+  qs("#VisaStatus").value = l["Visa Status"] || "In Progress";
+  qs("#RejectionReason").value = l["Rejection Reason"] || "";
+
+  // Mode-specific fields
+  const isIndividual = (String(l["Referrer Type"])==="Individual");
+  qs("#IndividualRewardDiv").classList.toggle("hidden", !isIndividual);
+  qs("#IndividualRewardStatusDiv").classList.toggle("hidden", !isIndividual);
+  qs("#AgencyPaymentDiv").classList.toggle("hidden", isIndividual);
+
+  if(isIndividual){
+    qs("#IndividualReward").value = l["Individual Reward"] || "Coworking";
+    qs("#RewardStatus").value = l["Reward Status"] || "Pending";
+  }else{
+    qs("#PaymentStatus").value = l["Payment Status"] || "Pending";
+  }
+
+  // Rejection reason toggle
+  qs("#RejectionReasonDiv").classList.toggle("hidden", qs("#VisaStatus").value !== "Rejected");
+
   openModal("leadModal");
 }
 
 /***********************
- * NOTES APPEND
+ * UPDATE
  ***********************/
-async function appendNote(rowNumber){
-  const txt=qs("#newNote").value.trim(); if(!txt)return;
-  const l=leads.find(x=>x.rowNumber===rowNumber); if(!l)return;
-  const existing=parseNotesCell(l["Notes"]); const next=[...existing,{at:new Date().toISOString(),note:txt}];
-  const payload={rowNumber,"Notes":JSON.stringify(next)};
+async function addOrUpdateLead(payload){
+  const url = `${SCRIPT_URL}?action=update`;
+  const res = await fetch(url, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
+  const out = await res.json();
+  if(!out.ok) throw new Error(out.error || "Update failed");
+}
+
+async function appendNote(rowNumber, noteText){
+  const l = leads.find(x => Number(x.rowNumber)===Number(rowNumber));
+  const existing = parseNotesCell(l && l["Notes"]);
+  const next = [...existing, { at: new Date().toISOString(), note: noteText }];
+  const payload = { rowNumber, "Notes": JSON.stringify(next) };
   await addOrUpdateLead(payload);
-  await reloadLeads(); viewLead(rowNumber);
+  await reloadLeads();
+  viewLead(rowNumber);
 }
 
 /***********************
- * FORM HANDLER
+ * FORM HANDLER (EDIT ONLY)
  ***********************/
-qs("#leadForm").onsubmit=async e=>{
-  e.preventDefault(); qs("#formError").innerText="";
+qs("#leadForm").addEventListener("submit", async (e)=>{
+  e.preventDefault(); qs("#formError").innerText = "";
   try{
-    const payload={
-      rowNumber:qs("#rowNumber").value||undefined,
-      "Timestamp":new Date().toISOString(),
-      "Referrer Name":qs("#ReferrerName").value,
-      "Referrer Email":qs("#ReferrerEmail").value,
-      "Referrer Phone":qs("#ReferrerPhone").value,
-      "Referrer Type":qs("#ReferrerType").value,
-      "Client Name":qs("#ClientName").value,
-      "Client Email":qs("#ClientEmail").value,
-      "Client Phone":qs("#ClientPhone").value,
-      "Client Company/Position":qs("#ClientCompany").value,
-      "Visa Type":qs("#VisaType").value,
-      "Visa Status":qs("#VisaStatus").value,
-      "Rejection Reason":qs("#RejectionReason").value,
-      "Individual Reward":qs("#ReferrerType").value==="Individual"?qs("#IndividualReward").value:"",
-      "Payment Status":qs("#ReferrerType").value==="Agency"?qs("#PaymentStatus").value:"",
+    const rowNumber = Number(qs("#rowNumber").value);
+    const l = leads.find(x => Number(x.rowNumber)===rowNumber);
+    if(!l) throw new Error("Lead not found.");
+
+    const isIndividual = (String(l["Referrer Type"])==="Individual");
+    const visaStatus = qs("#VisaStatus").value;
+
+    // base updates
+    const payload = {
+      rowNumber,
+      "Visa Status": visaStatus,
+      "Rejection Reason": (visaStatus==="Rejected") ? (qs("#RejectionReason").value || "") : ""
     };
+
+    // mode-specific
+    if(isIndividual){
+      payload["Individual Reward"] = qs("#IndividualReward").value;
+      payload["Reward Status"] = qs("#RewardStatus").value;
+    } else {
+      payload["Payment Status"] = qs("#PaymentStatus").value;
+    }
+
+    // optional note append
+    const newNote = (qs("#Notes").value || "").trim();
+    if(newNote){
+      const existing = parseNotesCell(l["Notes"]);
+      payload["Notes"] = JSON.stringify([...existing, { at: new Date().toISOString(), note: newNote }]);
+    }
+
     await addOrUpdateLead(payload);
-    closeModal("leadModal"); await reloadLeads();
-  }catch(err){qs("#formError").innerText=err.message;}
-};
+    closeModal("leadModal");
+    await reloadLeads();
+  }catch(err){
+    qs("#formError").innerText = err.message;
+  }
+});
+
+/***********************
+ * MODE & FILTERS
+ ***********************/
+function setMode(mode){
+  currentMode = mode; setActiveModeButton(); renderTable();
+}
+
+qs("#btnIndividual").addEventListener("click", ()=> setMode("Individual"));
+qs("#btnAgency").addEventListener("click", ()=> setMode("Agency"));
+qs("#visaStatusFilter").addEventListener("change", renderTable);
+qs("#searchInput").addEventListener("input", renderTable);
+qs("#refreshAll").addEventListener("click", reloadLeads);
 
 /***********************
  * INIT
  ***********************/
-qsa("#searchInput,#referrerTypeFilter,#visaStatusFilter").forEach(el=>el.addEventListener("input",renderLeads));
-qs("#refreshAll").onclick=reloadLeads;
-qs("#addNewLeadBtn").onclick=()=>{qs("#leadForm").reset();qs("#rowNumber").value="";qs("#modalTitle").innerText="Add New Lead";openModal("leadModal");};
-window.onload=reloadLeads;
+async function init(){
+  setMode("Individual");
+  await reloadLeads();
+}
+window.onload = init;
 </script>
 </body>
 </html>

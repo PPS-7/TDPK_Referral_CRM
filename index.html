@@ -178,7 +178,7 @@
 /***********************
  * CONFIG
  ***********************/
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwwjpMp-kaW4RSDpxPx5EMvzu38IHQGR3uADVJ-XGicJlWZYJ0sqZYjSCmhUnl5pXhT/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzUK1O-OC_5dnU_CtqNH2vhyrSVae4mkEN4mtZk-OAG0NrRsHtZz_qdlb4Ja0u5nAKj/exec";
 const MASTER_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSve5MYbZ7TUkDNHpYyWIHoi8mF32dFuEMmm2DCZTTd0o2gsWFRBG66ju9YKczVSrF1AxygZqvWwJ6K/pub?gid=1540779843&single=true&output=csv";
 
 let leads = [];           // full dataset
@@ -382,9 +382,15 @@ function editLead(rowNumber){
  * UPDATE
  ***********************/
 async function addOrUpdateLead(payload){
+  console.log("Sending payload to Apps Script:", payload);
   const url = `${SCRIPT_URL}?action=update`;
-  const res = await fetch(url, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
+  const res = await fetch(url, {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify(payload)
+  });
   const out = await res.json();
+  console.log("Response from Apps Script:", out);
   if(!out.ok) throw new Error(out.error || "Update failed");
 }
 

@@ -352,7 +352,6 @@ function editLead(rowNumber){
 
   // Set editable fields
   qs("#VisaStatus").value = l["Visa Status"] || "In Progress";
-  qs("#RejectionReason").value = l["Rejection Reason"] || "";
 
   // Mode-specific fields
   const isIndividual = (String(l["Referrer Type"])==="Individual");
@@ -366,9 +365,6 @@ function editLead(rowNumber){
   }else{
     qs("#PaymentStatus").value = l["Payment Status"] || "Pending";
   }
-
-  // Rejection reason toggle
-  qs("#RejectionReasonDiv").classList.toggle("hidden", qs("#VisaStatus").value !== "Rejected");
 
   openModal("leadModal");
 }
@@ -416,7 +412,7 @@ qs("#leadForm").addEventListener("submit", async (e)=>{
     const payload = {
       rowNumber,
       "Visa Status": visaStatus,
-      "Rejection Reason": (visaStatus==="Rejected") ? (qs("#RejectionReason").value || "") : ""
+     : ""
     };
 
     // mode-specific

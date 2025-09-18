@@ -18,8 +18,8 @@
     th, td { padding: .75rem; }
     th { font-size: .75rem; text-transform: uppercase; color: #9ca3af; letter-spacing: .05em; }
     td { color: #e5e7eb; font-size: .95rem; }
-    .btn { border-radius: .5rem; padding: .5rem .75rem; }
-    .btn-primary { background: #2563eb; color: #fff; }
+    .btn { border-radius: .5rem; padding: .5rem .75rem; cursor: pointer; transition: all 0.2s; }
+    .btn-primary { background: #2563eb; color: #fff; border: none; }
     .btn-primary:hover { background: #1d4ed8; }
     .btn-ghost { background: #0f172a; border: 1px solid #334155; color: #e2e8f0; }
     .btn-ghost:hover { background: #111827; }
@@ -30,6 +30,9 @@
     .table-wrap { overflow: auto; border: 1px solid #1f2937; border-radius: .75rem; }
     .toggle .active { background: #2563eb; color: #fff; border-color: #2563eb; }
     .toggle .inactive { background: #0f172a; border: 1px solid #334155; color: #e2e8f0; }
+    .loading { opacity: 0.6; pointer-events: none; }
+    .error { color: #ef4444; }
+    .success { color: #10b981; }
   </style>
 </head>
 <body class="text-gray-200 p-6 sm:p-10">
@@ -95,7 +98,7 @@
     </section>
   </div>
 
-  <!-- Edit Lead Modal (no add) -->
+  <!-- Edit Lead Modal -->
   <div id="leadModal" class="modal">
     <div class="modal-content">
       <div class="flex justify-between items-center pb-2">
@@ -178,6 +181,7 @@ const MASTER_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSve5MYb
 
 let leads = [];           // full dataset
 let currentMode = "Individual"; // "Individual" | "Agency"
+let isLoading = false;
 
 /***********************
  * UTILS
@@ -190,9 +194,20 @@ const badgeForStatus = s => {
   if (s === "Rejected") return "<span class='badge red'>Rejected</span>";
   return "<span class='badge yellow'>In Progress</span>";
 };
+
 function openModal(id){qs("#"+id).style.display="block";}
 function closeModal(id){qs("#"+id).style.display="none";}
-function parseNotesCell(c){ if(!c) return []; try{ const v = JSON.parse(c); return Array.isArray(v)?v:[]; }catch{ return []; } }
+
+function parseNotesCell(c){ 
+  if(!c) return []; 
+  try{ 
+    const v = JSON.parse(c); 
+    return Array.isArray(v)?v:[]; 
+  }catch{ 
+    return []; 
+  } 
+}
+
 function setActiveModeButton(){
   const i=qs("#btnIndividual"), a=qs("#btnAgency");
   if(currentMode==="Individual"){
@@ -204,15 +219,54 @@ function setActiveModeButton(){
   }
 }
 
+function showLoading(show = true) {
+  isLoading = show;
+  const body = document.body;
+  if (show) {
+    body.classList.add('loading');
+  } else {
+    body.classList.remove('loading');
+  }
+}
+
+function showError(message) {
+  const errorEl = qs("#formError");
+  errorEl.textContent = message;
+  errorEl.classList.add("error");
+  setTimeout(() => {
+    errorEl.textContent = "";
+    errorEl.classList.remove("error");
+  }, 5000);
+}
+
+function showSuccess(message) {
+  const errorEl = qs("#formError");
+  errorEl.textContent = message;
+  errorEl.classList.add("success");
+  setTimeout(() => {
+    errorEl.textContent = "";
+    errorEl.classList.remove("success");
+  }, 3000);
+}
+
 /***********************
  * LOADERS
  ***********************/
 async function reloadLeads(){
-  const res = await fetch(SCRIPT_URL+"?action=load");
-  const out = await res.json();
-  leads = (Array.isArray(out) ? out : []);
-  renderCounters();
-  renderTable();
+  try {
+    showLoading(true);
+    const res = await fetch(SCRIPT_URL+"?action=load");
+    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+    const out = await res.json();
+    leads = (Array.isArray(out) ? out : []);
+    renderCounters();
+    renderTable();
+  } catch (error) {
+    console.error("Error loading leads:", error);
+    showError("Failed to load leads. Please try again.");
+  } finally {
+    showLoading(false);
+  }
 }
 
 /***********************
@@ -327,7 +381,6 @@ function viewLead(rowNumber){
       ${kv("Visa Type", l["Visa Type"])}
       ${kv("Visa Status", l["Visa Status"])}
       ${modeSpecific}
-      ${l["Visa Status"]==="Rejected" ? kv("Rejection Reason", l["Rejection Reason"]) : ""}
       ${kv("Last Updated", l["Last Updated"] ? new Date(l["Last Updated"]).toLocaleString() : "—")}
     </div>
     <div class="space-y-3 mt-4">
@@ -335,7 +388,7 @@ function viewLead(rowNumber){
       ${notesHtml}
       <div class="flex gap-2">
         <textarea id="newNote" rows="2" class="input w-full" placeholder="Add a note"></textarea>
-        <button class="btn btn-primary" onclick='(function(){ const t=document.getElementById("newNote").value.trim(); if(!t) return; appendNote(${JSON.stringify(rowNumber)}, t); })()'>Add Note</button>
+        <button class="btn btn-primary" onclick='addNoteFromView(${JSON.stringify(rowNumber)})'>Add Note</button>
       </div>
     </div>
     <div class="flex justify-end gap-2 pt-4">
@@ -347,12 +400,12 @@ function viewLead(rowNumber){
 function editLead(rowNumber){
   const l = leads.find(x => Number(x.rowNumber)===Number(rowNumber));
   if(!l) return;
+  
   qs("#modalTitle").innerText = "Edit Lead";
   qs("#rowNumber").value = rowNumber;
 
   // Set editable fields
   qs("#VisaStatus").value = l["Visa Status"] || "In Progress";
-  qs("#RejectionReason").value = l["Rejection Reason"] || "";
 
   // Mode-specific fields
   const isIndividual = (String(l["Referrer Type"])==="Individual");
@@ -367,8 +420,8 @@ function editLead(rowNumber){
     qs("#PaymentStatus").value = l["Payment Status"] || "Pending";
   }
 
-  // Rejection reason toggle
-  qs("#RejectionReasonDiv").classList.toggle("hidden", qs("#VisaStatus").value !== "Rejected");
+  // Clear notes field
+  qs("#Notes").value = "";
 
   openModal("leadModal");
 }
@@ -384,14 +437,42 @@ async function addOrUpdateLead(payload){
     headers:{"Content-Type":"application/json"},
     body: JSON.stringify(payload)
   });
+  
+  if (!res.ok) {
+    throw new Error(`HTTP error! status: ${res.status}`);
+  }
+  
   const out = await res.json();
   console.log("Response from Apps Script:", out);
   if(!out.ok) throw new Error(out.error || "Update failed");
+  return out;
+}
+
+async function addNoteFromView(rowNumber) {
+  const noteText = qs("#newNote").value.trim();
+  if (!noteText) {
+    showError("Please enter a note before adding.");
+    return;
+  }
+  
+  try {
+    showLoading(true);
+    await appendNote(rowNumber, noteText);
+    qs("#newNote").value = ""; // Clear the input
+    showSuccess("Note added successfully!");
+  } catch (error) {
+    console.error("Error adding note:", error);
+    showError("Failed to add note. Please try again.");
+  } finally {
+    showLoading(false);
+  }
 }
 
 async function appendNote(rowNumber, noteText){
   const l = leads.find(x => Number(x.rowNumber)===Number(rowNumber));
-  const existing = parseNotesCell(l && l["Notes"]);
+  if (!l) throw new Error("Lead not found");
+  
+  const existing = parseNotesCell(l["Notes"]);
   const next = [...existing, { at: new Date().toISOString(), note: noteText }];
   const payload = { rowNumber, "Notes": JSON.stringify(next) };
   await addOrUpdateLead(payload);
@@ -403,8 +484,11 @@ async function appendNote(rowNumber, noteText){
  * FORM HANDLER (EDIT ONLY)
  ***********************/
 qs("#leadForm").addEventListener("submit", async (e)=>{
-  e.preventDefault(); qs("#formError").innerText = "";
+  e.preventDefault(); 
+  qs("#formError").innerText = "";
+  
   try{
+    showLoading(true);
     const rowNumber = Number(qs("#rowNumber").value);
     const l = leads.find(x => Number(x.rowNumber)===rowNumber);
     if(!l) throw new Error("Lead not found.");
@@ -415,8 +499,7 @@ qs("#leadForm").addEventListener("submit", async (e)=>{
     // base updates
     const payload = {
       rowNumber,
-      "Visa Status": visaStatus,
-      "Rejection Reason": (visaStatus==="Rejected") ? (qs("#RejectionReason").value || "") : ""
+      "Visa Status": visaStatus
     };
 
     // mode-specific
@@ -437,8 +520,12 @@ qs("#leadForm").addEventListener("submit", async (e)=>{
     await addOrUpdateLead(payload);
     closeModal("leadModal");
     await reloadLeads();
+    showSuccess("Lead updated successfully!");
   }catch(err){
-    qs("#formError").innerText = err.message;
+    console.error("Error updating lead:", err);
+    showError(err.message);
+  } finally {
+    showLoading(false);
   }
 });
 
@@ -446,7 +533,9 @@ qs("#leadForm").addEventListener("submit", async (e)=>{
  * MODE & FILTERS
  ***********************/
 function setMode(mode){
-  currentMode = mode; setActiveModeButton(); renderTable();
+  currentMode = mode; 
+  setActiveModeButton(); 
+  renderTable();
 }
 
 qs("#btnIndividual").addEventListener("click", ()=> setMode("Individual"));

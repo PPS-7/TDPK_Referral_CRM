@@ -146,7 +146,7 @@
         </div>
 
         <div>
-          <label class="block text-sm text-gray-300">Notes (staff only)</label>
+          <label class="block text-sm text-gray-300">Notes</label>
           <textarea id="Notes" rows="3" class="input w-full" placeholder="Optional note (will be appended)"></textarea>
           <p class="text-xs text-gray-400 mt-1">Adding a note here will append to Notes history.</p>
         </div>
@@ -339,7 +339,7 @@ function viewLead(rowNumber){
       <h4 class="text-lg font-semibold text-white">Notes</h4>
       ${notesHtml}
       <div class="flex gap-2">
-        <textarea id="newNote" rows="2" class="input w-full" placeholder="Add a note (staff-only)"></textarea>
+        <textarea id="newNote" rows="2" class="input w-full" placeholder="Add a note"></textarea>
         <button class="btn btn-primary" onclick='(function(){ const t=document.getElementById("newNote").value.trim(); if(!t) return; appendNote(${JSON.stringify(rowNumber)}, t); })()'>Add Note</button>
       </div>
     </div>

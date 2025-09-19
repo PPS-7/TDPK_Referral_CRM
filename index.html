@@ -33,6 +33,7 @@
     .loading { opacity: 0.6; pointer-events: none; }
     .error { color: #ef4444; }
     .success { color: #10b981; }
+    .status-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:8px; }
   </style>
 </head>
 <body class="text-gray-200 p-6 sm:p-10">
@@ -43,8 +44,9 @@
       <div class="flex items-center space-x-4">
         <h1 class="text-xl sm:text-3xl font-bold text-white">TDPK International Referral Program — Referral CRM</h1>
       </div>
-      <div class="text-sm text-gray-400">
-        <span class="font-semibold">Status:</span> <span id="userIdDisplay">Connected to Google Sheets</span>
+      <div class="text-sm text-gray-400 flex items-center">
+        <span id="statusDot" class="status-dot bg-green-500"></span>
+        <span class="font-semibold">Status:</span>&nbsp;<span id="userIdDisplay">Connected to Google Sheets</span>
       </div>
     </header>
 
@@ -153,7 +155,7 @@
           <button type="button" class="btn btn-ghost" onclick="closeModal('leadModal')">Cancel</button>
           <button id="saveBtn" class="btn btn-primary" type="submit">Save Changes</button>
         </div>
-        <p id="formError" class="text-sm text-red-300"></p>
+        <p id="formError" class="text-sm"></p>
       </form>
     </div>
   </div>
@@ -176,7 +178,7 @@
 /***********************
  * CONFIG
  ***********************/
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxvVOT-XbdNDszB4XUr6O_hZ7dSiFN-GNLRK9aKrUHoTZ607qSkLnGCrenJ-UrY3qJu/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwVj-YVmmAxMc1Jyp6i-OxlXvR9u13izg5C3QYqR_Xdf2mvRXy6I0SAMJMYbm_gPS5P/exec";
 const MASTER_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSve5MYbZ7TUkDNHpYyWIHoi8mF32dFuEMmm2DCZTTd0o2gsWFRBG66ju9YKczVSrF1AxygZqvWwJ6K/pub?gid=1540779843&single=true&output=csv";
 
 let leads = [];           // full dataset
@@ -222,31 +224,52 @@ function setActiveModeButton(){
 function showLoading(show = true) {
   isLoading = show;
   const body = document.body;
+  const saveBtn = qs("#saveBtn");
   if (show) {
     body.classList.add('loading');
+    if (saveBtn) saveBtn.disabled = true;
   } else {
     body.classList.remove('loading');
+    if (saveBtn) saveBtn.disabled = false;
+  }
+}
+
+function setStatus(connected, via = "Apps Script") {
+  const label = qs("#userIdDisplay");
+  const dot = qs("#statusDot");
+  if (connected) {
+    dot.classList.remove("bg-yellow-500", "bg-red-500");
+    dot.classList.add("bg-green-500");
+    label.textContent = `Connected (${via})`;
+  } else {
+    dot.classList.remove("bg-green-500", "bg-yellow-500");
+    dot.classList.add("bg-red-500");
+    label.textContent = "Disconnected";
   }
 }
 
 function showError(message) {
-  const errorEl = qs("#formError");
-  errorEl.textContent = message;
-  errorEl.classList.add("error");
+  const el = qs("#formError");
+  if (!el) return;
+  el.textContent = message;
+  el.classList.remove("success");
+  el.classList.add("error");
   setTimeout(() => {
-    errorEl.textContent = "";
-    errorEl.classList.remove("error");
+    el.textContent = "";
+    el.classList.remove("error");
   }, 5000);
 }
 
 function showSuccess(message) {
-  const errorEl = qs("#formError");
-  errorEl.textContent = message;
-  errorEl.classList.add("success");
+  const el = qs("#formError");
+  if (!el) return;
+  el.textContent = message;
+  el.classList.remove("error");
+  el.classList.add("success");
   setTimeout(() => {
-    errorEl.textContent = "";
-    errorEl.classList.remove("success");
-  }, 3000);
+    el.textContent = "";
+    el.classList.remove("success");
+  }, 2500);
 }
 
 /***********************
@@ -255,14 +278,40 @@ function showSuccess(message) {
 async function reloadLeads(){
   try {
     showLoading(true);
-    const res = await fetch(SCRIPT_URL+"?action=load");
-    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-    const out = await res.json();
-    leads = (Array.isArray(out) ? out : []);
+    let out = null;
+
+    // Try Apps Script API first
+    try {
+      const res = await fetch(SCRIPT_URL + "?action=load", { method: "GET" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      out = await res.json();
+      leads = Array.isArray(out) ? out : (out && Array.isArray(out.data)) ? out.data : [];
+      setStatus(true, "Apps Script");
+    } catch (primaryErr) {
+      console.warn("Primary load failed, falling back to CSV:", primaryErr);
+
+      // Fallback to read-only CSV to at least render the UI
+      const csvText = await fetch(MASTER_CSV_URL).then(r => {
+        if (!r.ok) throw new Error(`CSV HTTP ${r.status}`);
+        return r.text();
+      });
+
+      const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
+      const normalized = parsed.data.map((row, idx) => {
+        const obj = {};
+        Object.keys(row).forEach(k => { obj[String(k).trim()] = row[k]; });
+        obj.rowNumber = idx + 2; // header + 1-based
+        return obj;
+      });
+      leads = normalized;
+      setStatus(true, "CSV (read-only)");
+    }
+
     renderCounters();
     renderTable();
   } catch (error) {
     console.error("Error loading leads:", error);
+    setStatus(false);
     showError("Failed to load leads. Please try again.");
   } finally {
     showLoading(false);
@@ -283,7 +332,6 @@ function renderCounters(){
  * TABLE
  ***********************/
 function renderTableHead(){
-  // Column heads vary by mode
   const head = (currentMode==="Individual")
     ? ["Time","Referrer","Email","Client","Visa Type","Visa Status","Reward Status","Actions"]
     : ["Time","Referrer","Email","Client","Visa Type","Visa Status","Payment Status","Actions"];
@@ -400,7 +448,7 @@ function viewLead(rowNumber){
 function editLead(rowNumber){
   const l = leads.find(x => Number(x.rowNumber)===Number(rowNumber));
   if(!l) return;
-  
+
   qs("#modalTitle").innerText = "Edit Lead";
   qs("#rowNumber").value = rowNumber;
 
@@ -420,7 +468,7 @@ function editLead(rowNumber){
     qs("#PaymentStatus").value = l["Payment Status"] || "Pending";
   }
 
-  // Clear notes field
+  // Clear notes field for fresh append
   qs("#Notes").value = "";
 
   openModal("leadModal");
@@ -428,20 +476,21 @@ function editLead(rowNumber){
 
 /***********************
  * UPDATE
+ * Use text/plain to avoid browser CORS preflight OPTIONS
  ***********************/
 async function addOrUpdateLead(payload){
   console.log("Sending payload to Apps Script:", payload);
   const url = `${SCRIPT_URL}?action=update`;
   const res = await fetch(url, {
     method:"POST",
-    headers:{"Content-Type":"application/json"},
+    headers:{ "Content-Type":"text/plain;charset=utf-8" },
     body: JSON.stringify(payload)
   });
-  
+
   if (!res.ok) {
     throw new Error(`HTTP error! status: ${res.status}`);
   }
-  
+
   const out = await res.json();
   console.log("Response from Apps Script:", out);
   if(!out.ok) throw new Error(out.error || "Update failed");
@@ -454,7 +503,7 @@ async function addNoteFromView(rowNumber) {
     showError("Please enter a note before adding.");
     return;
   }
-  
+
   try {
     showLoading(true);
     await appendNote(rowNumber, noteText);
@@ -471,7 +520,7 @@ async function addNoteFromView(rowNumber) {
 async function appendNote(rowNumber, noteText){
   const l = leads.find(x => Number(x.rowNumber)===Number(rowNumber));
   if (!l) throw new Error("Lead not found");
-  
+
   const existing = parseNotesCell(l["Notes"]);
   const next = [...existing, { at: new Date().toISOString(), note: noteText }];
   const payload = { rowNumber, "Notes": JSON.stringify(next) };
@@ -486,7 +535,7 @@ async function appendNote(rowNumber, noteText){
 qs("#leadForm").addEventListener("submit", async (e)=>{
   e.preventDefault(); 
   qs("#formError").innerText = "";
-  
+
   try{
     showLoading(true);
     const rowNumber = Number(qs("#rowNumber").value);
@@ -496,13 +545,11 @@ qs("#leadForm").addEventListener("submit", async (e)=>{
     const isIndividual = (String(l["Referrer Type"])==="Individual");
     const visaStatus = qs("#VisaStatus").value;
 
-    // base updates
     const payload = {
       rowNumber,
       "Visa Status": visaStatus
     };
 
-    // mode-specific
     if(isIndividual){
       payload["Individual Reward"] = qs("#IndividualReward").value;
       payload["Reward Status"] = qs("#RewardStatus").value;
@@ -510,7 +557,6 @@ qs("#leadForm").addEventListener("submit", async (e)=>{
       payload["Payment Status"] = qs("#PaymentStatus").value;
     }
 
-    // optional note append
     const newNote = (qs("#Notes").value || "").trim();
     if(newNote){
       const existing = parseNotesCell(l["Notes"]);
@@ -523,7 +569,7 @@ qs("#leadForm").addEventListener("submit", async (e)=>{
     showSuccess("Lead updated successfully!");
   }catch(err){
     console.error("Error updating lead:", err);
-    showError(err.message);
+    showError(err.message || "Update failed.");
   } finally {
     showLoading(false);
   }

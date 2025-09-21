@@ -287,7 +287,7 @@ function renderTableHead(){
   const head = (currentMode==="Individual")
     ? ["Time","Referrer","Email","Client","Visa Type","Visa Status","Reward Status","Actions"]
     : ["Time","Referrer","Email","Client","Visa Type","Visa Status","Payment Status","Actions"];
-  qs("#tableHead").innerHTML = `<tr>${head.map(h=>`<th>${h}</th>`).join("")}</tr>`;
+  qs("#tableHead").innerHTML = `<tr>${head.map(h=>`<th class="text-center">${h}</th>`).join("")}</tr>`;
 }
 
 function renderTable(){

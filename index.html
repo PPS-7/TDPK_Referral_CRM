@@ -333,9 +333,27 @@ function renderCounters(){
  ***********************/
 function renderTableHead(){
   const head = (currentMode==="Individual")
-    ? ["Time","Referrer","Email","Client","Visa Type","Visa Status","Reward Status","Actions"]
-    : ["Time","Referrer","Email","Client","Visa Type","Visa Status","Payment Status","Actions"];
-  qs("#tableHead").innerHTML = `<tr>${head.map(h=>`<th>${h}</th>`).join("")}</tr>`;
+    ? [
+        { label: "Time", cls: "text-left" },
+        { label: "Referrer", cls: "text-left" },
+        { label: "Email", cls: "text-left" },
+        { label: "Client", cls: "text-left" },
+        { label: "Visa Type", cls: "text-center" },
+        { label: "Visa Status", cls: "text-center" },
+        { label: "Reward Status", cls: "text-center" },
+        { label: "Actions", cls: "text-center w-40" }
+      ]
+    : [
+        { label: "Time", cls: "text-left" },
+        { label: "Referrer", cls: "text-left" },
+        { label: "Email", cls: "text-left" },
+        { label: "Client", cls: "text-left" },
+        { label: "Visa Type", cls: "text-center" },
+        { label: "Visa Status", cls: "text-center" },
+        { label: "Payment Status", cls: "text-center" },
+        { label: "Actions", cls: "text-center w-40" }
+      ];
+  qs("#tableHead").innerHTML = `<tr>${head.map(h=>`<th class="${h.cls}">${h.label}</th>`).join("")}</tr>`;
 }
 
 function renderTable(){
@@ -358,36 +376,39 @@ function renderTable(){
     return matchesVisa && matchesSearch;
   });
 
-  if(filtered.length===0) qs("#noResults").classList.remove("hidden"); else qs("#noResults").classList.add("hidden");
+  qs("#noResults").classList.toggle("hidden", filtered.length !== 0);
 
   filtered.forEach(l => {
-    const cells = (currentMode==="Individual")
+    const isIndividual = currentMode==="Individual";
+    const cells = isIndividual
       ? [
-          (l["Timestamp"]?fmtTime(l["Timestamp"]):""),
-          (l["Referrer Name"]||""),
-          (l["Referrer Email"]||""),
-          (l["Client Name"]||""),
-          (l["Visa Type"]||""),
-          (badgeForStatus(l["Visa Status"]||"In Progress")),
-          (l["Reward Status"]||"Pending"),
+          { html: (l["Timestamp"]?fmtTime(l["Timestamp"]):""), cls: "text-left" },
+          { html: (l["Referrer Name"]||""), cls: "text-left" },
+          { html: (l["Referrer Email"]||""), cls: "text-left" },
+          { html: (l["Client Name"]||""), cls: "text-left" },
+          { html: (l["Visa Type"]||""), cls: "text-left" },
+          { html: (badgeForStatus(l["Visa Status"]||"In Progress")), cls: "text-left" },
+          { html: (l["Reward Status"]||"Pending"), cls: "text-center" }
         ]
       : [
-          (l["Timestamp"]?fmtTime(l["Timestamp"]):""),
-          (l["Referrer Name"]||""),
-          (l["Referrer Email"]||""),
-          (l["Client Name"]||""),
-          (l["Visa Type"]||""),
-          (badgeForStatus(l["Visa Status"]||"In Progress")),
-          (l["Payment Status"]||"Pending"),
+          { html: (l["Timestamp"]?fmtTime(l["Timestamp"]):""), cls: "text-left" },
+          { html: (l["Referrer Name"]||""), cls: "text-left" },
+          { html: (l["Referrer Email"]||""), cls: "text-left" },
+          { html: (l["Client Name"]||""), cls: "text-left" },
+          { html: (l["Visa Type"]||""), cls: "text-left" },
+          { html: (badgeForStatus(l["Visa Status"]||"In Progress")), cls: "text-left" },
+          { html: (l["Payment Status"]||"Pending"), cls: "text-center" }
         ];
 
     const tr = document.createElement("tr");
     tr.className = "hover:bg-slate-800/40";
     tr.innerHTML = `
-      ${cells.map(c=>`<td>${c}</td>`).join("")}
-      <td class="text-right pr-2">
-        <button class="btn btn-ghost mr-2" onclick='viewLead(${JSON.stringify(l.rowNumber)})'>View</button>
-        <button class="btn btn-ghost" onclick='editLead(${JSON.stringify(l.rowNumber)})'>Edit</button>
+      ${cells.map(c=>`<td class="${c.cls} align-middle">${c.html}</td>`).join("")}
+      <td class="text-center w-40 align-middle">
+        <div class="flex flex-col items-center gap-2">
+          <button class="btn btn-ghost" onclick='viewLead(${JSON.stringify(l.rowNumber)})'>View</button>
+          <button class="btn btn-ghost" onclick='editLead(${JSON.stringify(l.rowNumber)})'>Edit</button>
+        </div>
       </td>`;
     tbody.appendChild(tr);
   });

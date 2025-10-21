@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>TDPK Member Pass – GitHub Pages Demo</title>
+  <meta name="description" content="TDPK Member Pass demo (no build tools). React + optional Supabase in a single HTML file." />
+
+  <style>
+    :root{
+      --bg:#0f1115; --bg2:#121623; --card:#151a28; --border:#22293d;
+      --text:#eef1ff; --muted:#9aa4c1; --primary:#6ca8ff; --secondary:#a78bfa;
+      --ok:#9be28f; --warn:#ffd28f; --danger:#ff9aa7;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans";
+      background: radial-gradient(1200px 800px at 10% -10%, #1b2237 0, transparent 60%),
+                  radial-gradient(900px 600px at 100% 0%, #181d30 0, transparent 60%),
+                  linear-gradient(180deg, var(--bg), #0d101a 40%, #0b0e16 100%);
+      color:var(--text);
+    }
+    a{ color:var(--primary); text-decoration:none }
+    .container{ max-width:1100px; margin:0 auto; padding:24px }
+    .header{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px }
+    .brand{ font-weight:800; letter-spacing:.3px; font-size:18px }
+    nav a{ margin-right:12px }
+    .card{ background:var(--card); border:1px solid var(--border); border-radius:14px; padding:18px; box-shadow:0 10px 30px rgba(0,0,0,.25) }
+    .muted{ color:var(--muted) }
+    .btn{ border:1px solid var(--border); background:#14182a; color:var(--text); padding:10px 14px; border-radius:10px; cursor:pointer }
+    .btn.primary{ background: linear-gradient(90deg, #2563eb, #0891b2); border-color: transparent; }
+    .btn.warn{ background:#332610; border-color:#5e4b1a }
+    .btn.block{ width:100% }
+    .grid{ display:grid; gap:16px }
+    @media(min-width: 900px){ .grid.cols-2{ grid-template-columns:repeat(2, 1fr)} .grid.cols-3{ grid-template-columns:repeat(3, 1fr)} }
+    .label{ font-size:12px; color:var(--muted); margin:8px 0 6px }
+    .input{ width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:#0f1424; color:var(--text) }
+    .badge{ display:inline-block; padding:4px 8px; border:1px solid var(--border); border-radius:999px; font-size:12px; margin-right:8px }
+    .ok{ color:var(--ok) } .warn{ color:var(--warn) } .danger{ color:var(--danger) }
+    .qr{ font-family:monospace; background:#0c1222; border:1px dashed var(--border); padding:12px; border-radius:10px; overflow:auto }
+    footer{ color:#7e86a3; text-align:center; padding:32px 16px }
+    .heroTitle{ font-size:44px; font-weight:800; background:linear-gradient(90deg,#6ca8ff,#a78bfa); -webkit-background-clip:text; background-clip:text; color:transparent }
+    .pill{ display:inline-flex; gap:8px; align-items:center; padding:6px 10px; border-radius:999px; border:1px solid var(--border); background:#121629 }
+    .row{ display:flex; gap:12px; align-items:center; flex-wrap:wrap }
+    .spacer{ height:12px }
+    .statusDot{ width:10px; height:10px; border-radius:999px; display:inline-block; margin-right:8px }
+    .hidden{ display:none !important }
+  </style>
+
+  <!-- React, ReactDOM (CDN) -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- Supabase (CDN) -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script type="text/javascript">
+  ;(() => {
+    const { useState, useEffect, useRef } = React;
+
+    // Demo constants
+    const DEMO_ADMIN_EMAIL = 'pakkanan.cha@truedigitalpark.com';
+    const DEMO_ADMIN_PASS = 'test1811';
+
+    // Local storage keys
+    const LS_KEYS = {
+      mode: 'tdpk_demo_mode',
+      url: 'tdpk_demo_supabase_url',
+      key: 'tdpk_demo_supabase_key',
+      users: 'tdpk_demo_users',
+      session: 'tdpk_demo_session'
+    };
+
+    // Utilities
+    const readJSON = (k, d=null) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } };
+    const writeJSON = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+    const removeKey = (k) => { try { localStorage.removeItem(k); } catch {} };
+
+    // Config + client
+    function getConfig(){
+      return {
+        mode: localStorage.getItem(LS_KEYS.mode) || 'mock',
+        url: localStorage.getItem(LS_KEYS.url) || '',
+        key: localStorage.getItem(LS_KEYS.key) || ''
+      };
+    }
+    function setConfig(next){
+      if ('mode' in next) localStorage.setItem(LS_KEYS.mode, next.mode);
+      if ('url' in next) localStorage.setItem(LS_KEYS.url, next.url);
+      if ('key' in next) localStorage.setItem(LS_KEYS.key, next.key);
+    }
+
+    function createSupabase(url, key){
+      try {
+        if (!url || !key) return null;
+        return window.supabase.createClient(url, key);
+      } catch { return null; }
+    }
+
+    // Mock DB + auth
+    function seedMockUsers(){
+      const users = readJSON(LS_KEYS.users, []);
+      const ensure = (email, password, role) => {
+        if (!users.find(u => u.email === email)) users.push({ email, password, role });
+      };
+      ensure(DEMO_ADMIN_EMAIL, DEMO_ADMIN_PASS, 'admin');
+      ensure('pete.admin@tdpk.co.th', 'Demo!Admin123', 'admin');
+      ensure('takumi@salt.jp', 'Demo!Partner123', 'partner');
+      ensure('alice.member@demo.com', 'Demo!Member123', 'member');
+      writeJSON(LS_KEYS.users, users);
+      return users.length;
+    }
+
+    function mockSignIn(email, password){
+      const users = readJSON(LS_KEYS.users, []);
+      const found = users.find(u => u.email === email && u.password === password);
+      if (!found) return { error: new Error('Invalid credentials (mock)') };
+      const session = { mode:'mock', user:{ email: found.email, role: found.role }, token: 'mock-' + Math.random().toString(36).slice(2) };
+      writeJSON(LS_KEYS.session, session);
+      return { data: { session }, error: null };
+    }
+
+    function mockGetSession(){
+      const session = readJSON(LS_KEYS.session, null);
+      return { data: { session } };
+    }
+    function mockSignOut(){ removeKey(LS_KEYS.session); }
+
+    // Tiny hash router
+    function useHashRoute() {
+      const [route, setRoute] = useState(location.hash.replace('#','') || '/');
+      useEffect(() => {
+        const onHash = () => setRoute(location.hash.replace('#','') || '/');
+        window.addEventListener('hashchange', onHash);
+        return () => window.removeEventListener('hashchange', onHash);
+      }, []);
+      function go(to){ location.hash = to.startsWith('#') ? to : ('#' + to) }
+      return [route, go];
+    }
+
+    // Token generator (rotates every 10s)
+    function useRotatingToken(email){
+      const [token, setToken] = useState('');
+      useEffect(() => {
+        function make(){
+          const raw = `${email||'guest'}|${Date.now()}`;
+          return 'TDPK-' + btoa(unescape(encodeURIComponent(raw))).replace(/=+$/,'');
+        }
+        setToken(make());
+        const id = setInterval(()=>setToken(make()), 10000);
+        return () => clearInterval(id);
+      }, [email]);
+      return token;
+    }
+
+    // App
+    function App(){
+      const [route, go] = useHashRoute();
+      const [cfg, setCfg] = useState(getConfig());
+      const [sb, setSb] = useState(createSupabase(cfg.url, cfg.key));
+      const [session, setSession] = useState(null);
+      const [connected, setConnected] = useState(false);
+
+      // init session
+      useEffect(() => {
+        if (cfg.mode === 'mock'){
+          const { data } = mockGetSession();
+          setSession(data.session);
+          setConnected(true);
+          return;
+        }
+        if (!sb){ setSession(null); setConnected(false); return; }
+        sb.auth.getSession().then(({ data }) => setSession(data.session));
+        const { data: sub } = sb.auth.onAuthStateChange((_e, s) => setSession(s));
+        setConnected(!!sb);
+        return () => { try { sub.subscription.unsubscribe(); } catch{} }
+      }, [cfg.mode, sb]);
+
+      function onConfigChange(next){
+        setConfig(next);
+        const merged = { ...cfg, ...next };
+        setCfg(merged);
+        if ('url' in next || 'key' in next){ setSb(createSupabase(merged.url, merged.key)); }
+      }
+
+      async function logout(){
+        if (cfg.mode === 'mock'){ mockSignOut(); setSession(null); go('/auth'); return; }
+        try{ await sb?.auth.signOut(); } finally { go('/auth'); }
+      }
+
+      return React.createElement('div', { className: 'container' },
+        React.createElement(Header, { session, go, logout, cfg, onConfigChange, connected }),
+        route === '/' ? React.createElement(Home, { go, cfg, sb }) :
+        route.startsWith('/auth') ? React.createElement(Auth, { go, cfg, sb }) :
+        route.startsWith('/settings') ? React.createElement(Settings, { cfg, onConfigChange, sb, go }) :
+        React.createElement(Dashboard, { go, cfg, sb, session })
+      )
+    }
+
+    // Header
+    function Header({ session, go, logout, cfg, onConfigChange, connected }){
+      const dotColor = connected ? '#34d399' : '#f59e0b';
+      return React.createElement('div', { className: 'header' },
+        React.createElement('div', null,
+          React.createElement('div', { className:'brand' }, 'TDPK Member Pass'),
+          React.createElement('div', { className:'muted' }, 'GitHub Pages Demo (React, single-file)')
+        ),
+        React.createElement('nav', null,
+          React.createElement('a', { href:'#/' }, 'Home'),
+          React.createElement('a', { href:'#/auth' }, 'Auth'),
+          React.createElement('a', { href:'#/dashboard' }, 'Dashboard'),
+          React.createElement('a', { href:'#/settings' }, 'Settings'),
+          session ? React.createElement('button', { className:'btn', onClick: logout }, 'Logout') : null,
+          React.createElement('span', { className:'pill', style:{marginLeft:8} },
+            React.createElement('span', { className:'statusDot', style:{ background: dotColor } }),
+            cfg.mode === 'mock' ? 'Mock' : (cfg.url ? 'Supabase' : 'Unconfigured')
+          ),
+          React.createElement('select', {
+            className:'input', style:{ marginLeft:8, width:160 }, value: cfg.mode,
+            onChange: e => onConfigChange({ mode: e.target.value })
+          },
+            React.createElement('option', { value:'mock' }, 'Mode: Mock (local users)'),
+            React.createElement('option', { value:'cloud' }, 'Mode: Cloud (Supabase)')
+          )
+        )
+      )
+    }
+
+    // Home / Landing
+    function Home({ go, cfg, sb }){
+      const [busy, setBusy] = useState(false);
+      const [msg, setMsg] = useState('');
+
+      async function seed(){
+        setBusy(true); setMsg('');
+        try{
+          if (cfg.mode === 'mock'){
+            const n = seedMockUsers();
+            setMsg(`✅ Mock accounts ready. (${n} users). Go to Auth to sign in.`);
+          } else {
+            if (!sb) throw new Error('Supabase not configured. Open Settings.');
+            const { data, error } = await sb.functions.invoke('ensure-demo-users');
+            if(error) throw new Error(error.message);
+            setMsg('✅ Cloud seeding complete. Go to Auth to sign in.');
+          }
+        }catch(e){ setMsg('❌ Seeding failed: ' + (e.message || e)); }
+        finally{ setBusy(false); }
+      }
+
+      return React.createElement('div', { className:'grid cols-2' },
+        React.createElement('div', { className:'card' },
+          React.createElement('div', { className:'pill', style:{marginBottom:10} }, 'No build required • Works on GitHub Pages'),
+          React.createElement('div', { className:'heroTitle' }, 'Work anywhere, connect everywhere.'),
+          React.createElement('p', { className:'muted' }, 'Seed demo accounts, log in, and preview the dashboard UI. Runs fully on a static page.'),
+          React.createElement('div', { className:'grid cols-2', style:{marginTop:16} },
+            React.createElement('button', { className:'btn primary', onClick: () => go('/auth') }, 'Get Started'),
+            React.createElement('button', { className:'btn', onClick: seed, disabled: busy }, busy ? 'Seeding…' : 'Setup Demo Accounts')
+          ),
+          msg && React.createElement('div', { style:{marginTop:12} }, React.createElement('div', { className: msg.startsWith('✅') ? 'badge ok' : (msg.startsWith('❌') ? 'badge danger' : 'badge') }, msg))
+        ),
+
+        React.createElement('div', { className:'grid cols-1' },
+          React.createElement('div', { className:'card' },
+            React.createElement('h3', null, 'Cloud Setup (optional)'),
+            React.createElement('p', { className:'muted' }, 'Open Settings and paste your Supabase URL + anon key. Make sure email/password auth is enabled, and deploy the Edge Function ', React.createElement('code', null, 'ensure-demo-users'), '.')
+          ),
+          React.createElement('div', { className:'card' },
+            React.createElement('h3', null, 'Demo Credentials (Mock Mode)'),
+            React.createElement('p', { className:'muted' }, 'After seeding, try these in mock mode:'),
+            React.createElement('pre', { className:'qr' },
+`Admin:  ${DEMO_ADMIN_EMAIL} / ${DEMO_ADMIN_PASS}
+Admin2: pete.admin@tdpk.co.th   / Demo!Admin123
+Partner: takumi@salt.jp          / Demo!Partner123
+Member:  alice.member@demo.com   / Demo!Member123`
+            )
+          )
+        )
+      )
+    }
+
+    // Auth page
+    function Auth({ go, cfg, sb }){
+      const [email, setEmail] = useState('');
+      const [password, setPassword] = useState('');
+      const [msg, setMsg] = useState('');
+      const [busy, setBusy] = useState(false);
+
+      async function signIn(e){
+        e.preventDefault();
+        setBusy(true); setMsg('');
+        try{
+          if (cfg.mode === 'mock'){
+            const { error } = mockSignIn(email, password);
+            if (error) throw error;
+            setMsg('✅ Signed in (mock). Redirecting…');
+            setTimeout(()=>location.hash = '#/dashboard', 400);
+            return;
+          }
+          if (!sb) throw new Error('Supabase not configured. Open Settings.');
+          const { error } = await sb.auth.signInWithPassword({ email, password });
+          if(error) throw error;
+          setMsg('✅ Signed in. Redirecting…');
+          setTimeout(()=>location.hash = '#/dashboard', 400);
+        }catch(e){ setMsg('❌ ' + (e.message || e)); }
+        finally{ setBusy(false); }
+      }
+
+      async function magic(){
+        setBusy(true); setMsg('');
+        try{
+          if (cfg.mode === 'mock') { setMsg('❌ Magic link not available in mock'); return; }
+          if (!sb) throw new Error('Supabase not configured. Open Settings.');
+          const { error } = await sb.auth.signInWithOtp({ email });
+          if (error) throw error;
+          setMsg('✅ Magic link sent (check inbox).');
+        }catch(e){ setMsg('❌ ' + (e.message || e)); }
+        finally{ setBusy(false); }
+      }
+
+      function fillMyDemo(){ setEmail(DEMO_ADMIN_EMAIL); setPassword(DEMO_ADMIN_PASS); }
+
+      return React.createElement('div', { className:'grid cols-2' },
+        React.createElement('div', { className:'card' },
+          React.createElement('h2', null, 'Sign in'),
+          React.createElement('form', { onSubmit: signIn },
+            React.createElement('div', { className:'label' }, 'Email'),
+            React.createElement('input', { className:'input', value:email, onChange:e=>setEmail(e.target.value), placeholder:'you@example.com' }),
+            React.createElement('div', { className:'label' }, 'Password'),
+            React.createElement('input', { className:'input', type:'password', value:password, onChange:e=>setPassword(e.target.value), placeholder:'••••••••' }),
+            React.createElement('div', { className:'spacer' }),
+            React.createElement('button', { className:'btn primary block', disabled: busy }, busy ? 'Signing in…' : 'Sign in')
+          ),
+          React.createElement('div', { className:'grid cols-2', style:{marginTop:12} },
+            React.createElement('button', { className:'btn', onClick: magic, disabled: busy }, 'Send magic link'),
+            React.createElement('button', { className:'btn warn', onClick: fillMyDemo, disabled: busy }, 'Fill my demo admin')
+          ),
+          msg && React.createElement('div', { style:{marginTop:12} }, React.createElement('div', { className: msg.includes('✅') ? 'badge ok' : 'badge danger' }, msg))
+        ),
+
+        React.createElement('div', { className:'card' },
+          React.createElement('h3', null, 'Tips'),
+          React.createElement('ul', { className:'muted' },
+            React.createElement('li', null, 'Run seeding on Home if login fails.'),
+            React.createElement('li', null, 'Confirm Email/Password auth is ON in Supabase.'),
+            React.createElement('li', null, 'Edge Function ', React.createElement('code', null, 'ensure-demo-users'), ' must be deployed for cloud seeding.')
+          )
+        )
+      )
+    }
+
+    // Settings
+    function Settings({ cfg, onConfigChange, sb, go }){
+      const [url, setUrl] = useState(cfg.url);
+      const [key, setKey] = useState(cfg.key);
+      const [msg, setMsg] = useState('');
+      const [busy, setBusy] = useState(false);
+
+      function save(){ onConfigChange({ url, key }); setMsg('✅ Saved.'); }
+      function copy(){
+        const txt = `SUPABASE_URL=${url}\nSUPABASE_ANON_KEY=${key}`;
+        navigator.clipboard.writeText(txt).then(()=> setMsg('✅ Copied to clipboard.'));
+      }
+      function resetAll(){
+        if (!confirm('Clear local demo data and logout?')) return;
+        removeKey(LS_KEYS.users); removeKey(LS_KEYS.session);
+        setMsg('✅ Cleared.');
+      }
+      async function test(){
+        setBusy(true); setMsg('');
+        try{
+          const client = createSupabase(url, key);
+          if (!client) throw new Error('Invalid config');
+          const { error } = await client.from('_').select('*').limit(0); // harmless call, likely RLS error
+          setMsg('✅ Client initialized.');
+        }catch(e){ setMsg('❌ ' + (e.message || e)); }
+        finally{ setBusy(false); }
+      }
+
+      return React.createElement('div', { className:'grid cols-2' },
+        React.createElement('div', { className:'card' },
+          React.createElement('h3', null, 'Environment'),
+          React.createElement('div', { className:'label' }, 'Mode'),
+          React.createElement('select', { className:'input', value:cfg.mode, onChange:e=>onConfigChange({ mode:e.target.value }) },
+            React.createElement('option', { value:'mock' }, 'Mock (local users)'),
+            React.createElement('option', { value:'cloud' }, 'Cloud (Supabase)')
+          ),
+          React.createElement('div', { className:'label' }, 'Supabase URL'),
+          React.createElement('input', { className:'input', value:url, onChange:e=>setUrl(e.target.value), placeholder:'https://your-project.supabase.co' }),
+          React.createElement('div', { className:'label' }, 'Supabase ANON key'),
+          React.createElement('input', { className:'input', value:key, onChange:e=>setKey(e.target.value), placeholder:'public-anon-key' }),
+          React.createElement('div', { className:'row', style:{marginTop:12} },
+            React.createElement('button', { className:'btn', onClick: save }, 'Save'),
+            React.createElement('button', { className:'btn', onClick: copy }, 'Copy env'),
+            React.createElement('button', { className:'btn warn', onClick: resetAll }, 'Reset demo'),
+            React.createElement('button', { className:'btn', onClick: test, disabled: busy }, busy ? 'Testing…' : 'Test client')
+          ),
+          msg && React.createElement('div', { style:{marginTop:12} }, React.createElement('div', { className: msg.startsWith('✅') ? 'badge ok' : 'badge danger' }, msg))
+        ),
+        React.createElement('div', { className:'card' },
+          React.createElement('h3', null, 'How to deploy'),
+          React.createElement('ol', { className:'muted' },
+            React.createElement('li', null, 'Commit this file to your repo as ', React.createElement('code', null, 'index.html'), ' (or place under ', React.createElement('code', null, 'docs/'), ').'),
+            React.createElement('li', null, 'Enable GitHub Pages in repository settings (main branch / root or docs).'),
+            React.createElement('li', null, 'Open Settings → paste Supabase URL/key (optional).'),
+            React.createElement('li', null, 'Go to Home → run seeding (Mock or Cloud).'),
+            React.createElement('li', null, 'Log in via Auth. Enjoy the Dashboard.')
+          )
+        )
+      )
+    }
+
+    // Dashboard
+    function Dashboard({ cfg, sb, session }){
+      const [profile, setProfile] = useState(null);
+      const [loading, setLoading] = useState(true);
+      const email = (session?.user?.email) || (session?.user?.email) || null;
+      const token = useRotatingToken(email);
+
+      useEffect(() => {
+        (async () => {
+          if (!session){ setLoading(false); return; }
+          if (cfg.mode === 'mock'){
+            setProfile({ email: session.user.email, role: session.user.role || 'member' });
+            setLoading(false);
+            return;
+          }
+          try{
+            const { data: { user } } = await sb.auth.getUser();
+            if (!user){ setLoading(false); return; }
+            let role = 'member';
+            try{
+              const { data } = await sb.from('users').select('role').eq('id', user.id).maybeSingle();
+              role = data?.role || 'member';
+            }catch{}
+            setProfile({ email: user.email, role });
+          } finally { setLoading(false); }
+        })();
+      }, [cfg.mode, session]);
+
+      if (!session) return React.createElement('div', { className:'card' }, 'You are not signed in. ', React.createElement('a', { href:'#/auth' }, 'Go to Auth'));
+      if (loading) return React.createElement('div', { className:'card' }, 'Loading…');
+
+      return React.createElement('div', { className:'grid cols-2' },
+        React.createElement('div', { className:'card' },
+          React.createElement('h2', null, 'Dashboard'),
+          profile
+            ? React.createElement(React.Fragment, null,
+                React.createElement('div', null, 'Signed in as: ', React.createElement('strong', null, profile.email)),
+                React.createElement('div', { style:{marginTop:10} },
+                  React.createElement('span', { className:'badge' }, 'Role: ' + profile.role),
+                  React.createElement('span', { className:'badge' }, 'Status: Active (demo)')
+                ),
+                React.createElement('div', { style:{marginTop:12} },
+                  React.createElement('div', { className:'label' }, 'Your rotating access token'),
+                  React.createElement('div', { className:'qr' }, token)
+                )
+              )
+            : 'No profile'
+        ),
+        React.createElement('div', { className:'card' },
+          React.createElement('h3', null, 'What next?'),
+          React.createElement('ul', { className:'muted' },
+            React.createElement('li', null, 'Add Wallet Pass generation'),
+            React.createElement('li', null, 'Add Partner “Scan & Verify” camera page'),
+            React.createElement('li', null, 'Implement Offers listing and redemption logging')
+          )
+        )
+      )
+    }
+
+    // Render app
+    ReactDOM.createRoot(document.getElementById('app')).render(React.createElement(App));
+  })();
+  </script>
+
+  <footer>© TDPK Demo • Static HTML on GitHub Pages</footer>
+</body>
+</html>

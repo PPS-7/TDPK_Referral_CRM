@@ -44,11 +44,47 @@
       <div class="flex items-center space-x-4">
         <h1 class="text-xl sm:text-3xl font-bold text-white">TDPK International Referral Program — Referral CRM</h1>
       </div>
-      <div class="text-sm text-gray-400 flex items-center">
-        <span id="statusDot" class="status-dot bg-green-500"></span>
-        <span class="font-semibold">Status:</span>&nbsp;<span id="userIdDisplay">Connected to Google Sheets</span>
+      <div class="text-sm text-gray-400 flex items-center gap-3">
+        <div class="flex items-center">
+          <span id="statusDot" class="status-dot bg-yellow-500"></span>
+          <span class="font-semibold">Status:</span>&nbsp;<span id="userIdDisplay">Disconnected</span>
+        </div>
+        <div class="hidden sm:block text-gray-600">|</div>
+        <div class="flex items-center gap-2">
+          <span class="font-semibold">User:</span>
+          <span id="loggedInUserEmail">—</span>
+          <button id="signOutBtn" class="btn btn-ghost py-1 px-2">Sign out</button>
+        </div>
       </div>
     </header>
+
+    <!-- Login Overlay -->
+    <div id="loginOverlay" class="modal">
+      <div class="modal-content max-w-md w-full">
+        <div class="pb-4">
+          <h3 class="text-2xl font-semibold text-white">Demo Login</h3>
+          <p class="text-sm text-gray-400 mt-1">Use the demo credentials below to sign in.</p>
+        </div>
+        <form id="loginForm" class="space-y-4">
+          <div>
+            <label class="block text-sm text-gray-300">Email</label>
+            <input id="loginEmail" type="email" class="input w-full" placeholder="you@example.com" />
+          </div>
+          <div>
+            <label class="block text-sm text-gray-300">Password</label>
+            <input id="loginPassword" type="password" class="input w-full" placeholder="••••••••" />
+          </div>
+          <div class="text-xs text-gray-400">
+            <p><span class="font-semibold">Demo Email</span>: pakkanan.cha@truedigitalpark.com</p>
+            <p><span class="font-semibold">Demo Password</span>: test1811</p>
+          </div>
+          <p id="loginError" class="text-sm error"></p>
+          <div class="flex items-center justify-end gap-2 pt-2">
+            <button id="loginBtn" type="submit" class="btn btn-primary">Sign in</button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <!-- Analytics -->
     <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -86,6 +122,12 @@
             <option value="Rejected">Rejected</option>
           </select>
           <button id="refreshAll" class="btn btn-ghost w-full sm:w-auto">Refresh</button>
+          <select id="dataSourceSelect" class="input w-full sm:w-auto">
+            <option value="mock">Data Source: Mock (in-memory)</option>
+            <option value="live">Data Source: Live (Apps Script)</option>
+            <option value="csv">Data Source: CSV (read-only)</option>
+          </select>
+          <button id="seedDemoBtn" class="btn btn-ghost w-full sm:w-auto">Setup Demo Data</button>
         </div>
       </div>
 
@@ -180,10 +222,73 @@
  ***********************/
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwVj-YVmmAxMc1Jyp6i-OxlXvR9u13izg5C3QYqR_Xdf2mvRXy6I0SAMJMYbm_gPS5P/exec";
 const MASTER_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSve5MYbZ7TUkDNHpYyWIHoi8mF32dFuEMmm2DCZTTd0o2gsWFRBG66ju9YKczVSrF1AxygZqvWwJ6K/pub?gid=1540779843&single=true&output=csv";
+const DEMO_EMAIL = "pakkanan.cha@truedigitalpark.com";
+const DEMO_PASSWORD = "test1811";
 
 let leads = [];           // full dataset
 let currentMode = "Individual"; // "Individual" | "Agency"
 let isLoading = false;
+let isAuthenticated = false;
+let currentUserEmail = null;
+let dataSource = "mock"; // "mock" | "live" | "csv"
+
+// In-memory mock dataset for demo
+const MOCK_LEADS = (function buildMock() {
+  const now = new Date();
+  const base = [
+    {
+      rowNumber: 2,
+      Timestamp: now.toISOString(),
+      "Referrer Type": "Individual",
+      "Referrer Name": "Alice Chen",
+      "Referrer Email": "alice@example.com",
+      "Referrer Phone": "+66 88 123 4567",
+      "Client Name": "Somchai W.",
+      "Client Email": "somchai@example.com",
+      "Client Phone": "+66 81 234 5678",
+      "Client Company/Position": "Acme Co. / Manager",
+      "Visa Type": "SMART Visa T",
+      "Visa Status": "In Progress",
+      "Individual Reward": "Coworking",
+      "Reward Status": "Pending",
+      Notes: JSON.stringify([{ at: now.toISOString(), note: "Qualified lead via event." }])
+    },
+    {
+      rowNumber: 3,
+      Timestamp: now.toISOString(),
+      "Referrer Type": "Agency",
+      "Referrer Name": "Tokyo Partners",
+      "Referrer Email": "ops@tokyopartners.jp",
+      "Referrer Phone": "+81 3 1234 5678",
+      "Client Name": "Yuki S.",
+      "Client Email": "yuki@example.jp",
+      "Client Phone": "+81 90 1111 2222",
+      "Client Company/Position": "Startup / Founder",
+      "Visa Type": "SMART Visa S",
+      "Visa Status": "Approved",
+      "Payment Status": "Fully Paid",
+      Notes: JSON.stringify([{ at: now.toISOString(), note: "Docs verified; approved." }])
+    },
+    {
+      rowNumber: 4,
+      Timestamp: now.toISOString(),
+      "Referrer Type": "Individual",
+      "Referrer Name": "Mark Lee",
+      "Referrer Email": "mark.lee@example.com",
+      "Referrer Phone": "+886 987 654 321",
+      "Client Name": "Chaiyada P.",
+      "Client Email": "chaiyada@example.com",
+      "Client Phone": "+66 82 777 8888",
+      "Client Company/Position": "Freelancer",
+      "Visa Type": "SMART Visa I",
+      "Visa Status": "Rejected",
+      "Individual Reward": "Meeting Room",
+      "Reward Status": "Pending",
+      Notes: JSON.stringify([{ at: now.toISOString(), note: "Missing financial proof." }])
+    }
+  ];
+  return base;
+})();
 
 /***********************
  * UTILS
@@ -248,6 +353,11 @@ function setStatus(connected, via = "Apps Script") {
   }
 }
 
+function setUser(email) {
+  currentUserEmail = email;
+  qs('#loggedInUserEmail').textContent = email || "—";
+}
+
 function showError(message) {
   const el = qs("#formError");
   if (!el) return;
@@ -280,22 +390,42 @@ async function reloadLeads(){
     showLoading(true);
     let out = null;
 
-    // Try Apps Script API first
-    try {
-      const res = await fetch(SCRIPT_URL + "?action=load", { method: "GET" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      out = await res.json();
-      leads = Array.isArray(out) ? out : (out && Array.isArray(out.data)) ? out.data : [];
-      setStatus(true, "Apps Script");
-    } catch (primaryErr) {
-      console.warn("Primary load failed, falling back to CSV:", primaryErr);
-
-      // Fallback to read-only CSV to at least render the UI
+    if (dataSource === 'mock') {
+      leads = JSON.parse(JSON.stringify(MOCK_LEADS));
+      setStatus(true, 'Mock');
+    } else if (dataSource === 'live') {
+      // Try Apps Script API first
+      try {
+        const res = await fetch(SCRIPT_URL + "?action=load", { method: "GET" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        out = await res.json();
+        leads = Array.isArray(out) ? out : (out && Array.isArray(out.data)) ? out.data : [];
+        setStatus(true, "Apps Script");
+      } catch (primaryErr) {
+        console.warn("Live load failed, falling back to CSV:", primaryErr);
+        dataSource = 'csv';
+      }
+      if (dataSource === 'csv' && !leads.length) {
+        const csvText = await fetch(MASTER_CSV_URL).then(r => {
+          if (!r.ok) throw new Error(`CSV HTTP ${r.status}`);
+          return r.text();
+        });
+        const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
+        const normalized = parsed.data.map((row, idx) => {
+          const obj = {};
+          Object.keys(row).forEach(k => { obj[String(k).trim()] = row[k]; });
+          obj.rowNumber = idx + 2; // header + 1-based
+          return obj;
+        });
+        leads = normalized;
+        setStatus(true, "CSV (read-only)");
+      }
+    } else {
+      // CSV only
       const csvText = await fetch(MASTER_CSV_URL).then(r => {
         if (!r.ok) throw new Error(`CSV HTTP ${r.status}`);
         return r.text();
       });
-
       const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
       const normalized = parsed.data.map((row, idx) => {
         const obj = {};
@@ -500,6 +630,21 @@ function editLead(rowNumber){
  * Use text/plain to avoid browser CORS preflight OPTIONS
  ***********************/
 async function addOrUpdateLead(payload){
+  if (dataSource === 'csv') {
+    throw new Error('Read-only mode: CSV source selected');
+  }
+  if (dataSource === 'mock') {
+    // Update in-memory data
+    const idx = leads.findIndex(l => Number(l.rowNumber) === Number(payload.rowNumber));
+    if (idx === -1) throw new Error('Lead not found');
+    const updated = { ...leads[idx], ...payload, "Last Updated": new Date().toISOString() };
+    leads[idx] = updated;
+    // Reflect into MOCK_LEADS too for persistence during session
+    const baseIdx = MOCK_LEADS.findIndex(l => Number(l.rowNumber) === Number(payload.rowNumber));
+    if (baseIdx !== -1) MOCK_LEADS[baseIdx] = { ...MOCK_LEADS[baseIdx], ...payload, "Last Updated": updated["Last Updated"] };
+    return { ok: true };
+  }
+  // Live update via Apps Script
   console.log("Sending payload to Apps Script:", payload);
   const url = `${SCRIPT_URL}?action=update`;
   const res = await fetch(url, {
@@ -507,11 +652,9 @@ async function addOrUpdateLead(payload){
     headers:{ "Content-Type":"text/plain;charset=utf-8" },
     body: JSON.stringify(payload)
   });
-
   if (!res.ok) {
     throw new Error(`HTTP error! status: ${res.status}`);
   }
-
   const out = await res.json();
   console.log("Response from Apps Script:", out);
   if(!out.ok) throw new Error(out.error || "Update failed");
@@ -610,12 +753,60 @@ qs("#btnAgency").addEventListener("click", ()=> setMode("Agency"));
 qs("#visaStatusFilter").addEventListener("change", renderTable);
 qs("#searchInput").addEventListener("input", renderTable);
 qs("#refreshAll").addEventListener("click", reloadLeads);
+qs("#dataSourceSelect").addEventListener("change", async (e)=>{
+  dataSource = e.target.value;
+  await reloadLeads();
+});
+qs('#seedDemoBtn').addEventListener('click', async () => {
+  dataSource = 'mock';
+  await reloadLeads();
+  showSuccess('Demo data ready (mock mode).');
+});
+
+/***********************
+ * AUTH (DEMO)
+ ***********************/
+function requireAuthUI() {
+  openModal('loginOverlay');
+  qs('#loginEmail').value = DEMO_EMAIL;
+  qs('#loginPassword').value = DEMO_PASSWORD;
+}
+
+function hideAuthUI() { closeModal('loginOverlay'); }
+
+qs('#loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = (qs('#loginEmail').value || '').trim();
+  const password = (qs('#loginPassword').value || '').trim();
+  const err = qs('#loginError');
+  err.textContent = '';
+  if (email === DEMO_EMAIL && password === DEMO_PASSWORD) {
+    isAuthenticated = true;
+    setUser(email);
+    hideAuthUI();
+    await reloadLeads();
+  } else {
+    err.textContent = 'Invalid credentials. Use the provided demo email/password.';
+  }
+});
+
+qs('#signOutBtn').addEventListener('click', () => {
+  isAuthenticated = false;
+  setUser(null);
+  requireAuthUI();
+});
 
 /***********************
  * INIT
  ***********************/
 async function init(){
   setMode("Individual");
+  setUser(null);
+  dataSource = 'mock';
+  if (!isAuthenticated) {
+    requireAuthUI();
+    return; // reloadLeads will run post-login
+  }
   await reloadLeads();
 }
 window.onload = init;
